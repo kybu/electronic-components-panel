@@ -1,7 +1,7 @@
 Electronic Components Panel
 ===========================
 
-GUI application querying electronic components suppliers stocks. Aimed at hobbyist to safe time.
+GUI application querying electronic components suppliers stocks. Aimed at hobbyist to safe time when ordering components.
 
 Video:
 

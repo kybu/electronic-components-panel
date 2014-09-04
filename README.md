@@ -3,6 +3,7 @@ Electronic Components Panel
 
 GUI application querying electronic components suppliers stocks. Aimed at hobbyist to safe time.
 
+Video:
 [![ScreenShot](http://img.youtube.com/vi/w-hu01Cg7yE/0.jpg)](http://youtu.be/w-hu01Cg7yE)
 
 # Features

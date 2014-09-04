@@ -1,0 +1,23 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    hatchet (0.2.10)
+    httparty (0.13.1)
+      json (~> 1.8)
+      multi_xml (>= 0.5.2)
+    json (1.8.1)
+    multi_xml (0.5.5)
+    qtbindings (4.8.5.2-x86-mingw32)
+      qtbindings-qt (= 4.8.5)
+    qtbindings-qt (4.8.5-x86-mingw32)
+    xml-simple (1.1.4)
+
+PLATFORMS
+  x86-mingw32
+
+DEPENDENCIES
+  hatchet
+  httparty
+  qtbindings
+  qtbindings-qt
+  xml-simple

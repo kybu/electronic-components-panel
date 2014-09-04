@@ -17,3 +17,12 @@ Video:
 
 Farnell api turned out to be temperamental and not well supported. It randomly does not return component attributes and that limits filters.
 Additional APIs will be added like http://octopart.com , https://developers.tme.eu/en/ 
+
+# Technicalities
+Ruby 2.0.0+ and Qt were chosen for this application, main reason being the speed of development. It is rough at the edges at the moment but that will get better.
+
+Theoretically, it is a multi-platform application. It should run wherever Ruby and Qt gem are supported.
+
+## Install
+
+After downloading, run `bundle update` to update required Ruby gems. Add `$farnellApiKey = '<your_key>'` into `components.rb`.

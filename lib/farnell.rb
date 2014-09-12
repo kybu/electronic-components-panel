@@ -12,7 +12,11 @@ class Product < Hash
 
     if has_key? 'attributes'
       self['attributes'].each do |attr|
-        @attributes[attr['attributeLabel'].strip] = attr['attributeValue'].strip
+        if attr.is_a? Hash
+          @attributes[attr['attributeLabel'].strip] = attr['attributeValue'].strip
+        else
+          attr.delete 'attributes'
+        end
       end
     end
   end
@@ -46,40 +50,27 @@ class FarnellClass < Qt::Object
   end
 
   def searchFor(query, numberOfResults = 10)
-    @lastQuery = query
+      @lastQuery = query
 
-    puts "Looking for #{query} (#{numberOfResults})"
+      puts "Looking for #{query} (#{numberOfResults})"
 
-    products = []
-    if (products=fetchCache(query))
-      puts "From cache"
-    else
       products = []
+      if (products=fetchCache(query))
+        puts "From cache"
+      else
+        data = remoteCall 'any:'+query, 0, numberOfResults
 
-      data = remoteCall 'any:'+query, 0, numberOfResults
-
-      if data.has_key? 'keywordSearchReturn'
-        noAttributes = 0
-        data['keywordSearchReturn']['products'].each do |p|
-          # JSON
-          #next if p.has_key?('reeling') and p['reeling']
-          # XML
-          #next if p.has_key?('reeling') and p['reeling'].strip == 'true'
-
-          unless p.has_key? 'attributes'
-            noAttributes += 1
-            p['attributes'] = []
-          end
-
-          products << Product.new(p)
-        end
-
+        products, noAttributes = rawDataToProducts(data)
         puts "Products with no attributes: #{noAttributes}"
-      end
 
-      # sku = products.map {|p| p['sku']}
-      #
-      # data = remoteCall "id: #{sku.join ' '}", 0, sku.size
+        if noAttributes != 0
+          sku = products.map { |p| p['sku'] }
+          data = remoteCall "id: #{sku.join ' '}", 0, sku.size
+
+          products, noAttributes = rawDataToProducts(data)
+
+          puts "Products with no attributes: #{noAttributes}"
+        end
 
       storeCache query, products
     end
@@ -213,6 +204,34 @@ class FarnellClass < Qt::Object
     @cache[query] = data
 
     File.binwrite "cache/#{@storeId}_#{query}", Marshal.dump(data)
+  end
+
+  private
+  def rawDataToProducts(data)
+    products = []
+
+    dataReturnKey = nil
+    dataReturnKey = 'keywordSearchReturn' if data.has_key?('keywordSearchReturn')
+    dataReturnKey = 'premierFarnellPartNumberReturn' if data.has_key?('premierFarnellPartNumberReturn')
+
+    if dataReturnKey
+      noAttributes = 0
+      data[dataReturnKey]['products'].each do |p|
+        # JSON
+        #next if p.has_key?('reeling') and p['reeling']
+        # XML
+        #next if p.has_key?('reeling') and p['reeling'].strip == 'true'
+
+        unless p.has_key? 'attributes'
+          noAttributes += 1
+          p['attributes'] = []
+        end
+
+        products << Product.new(p)
+      end
+
+      return products, noAttributes
+    end
   end
 end
 

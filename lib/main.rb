@@ -7,13 +7,34 @@ require_relative 'logging'
 require_relative 'helpers'
 require_relative 'farnell'
 
+class TableEventFilter < Qt::Object
+  signals 'productRightClick(int)' # productsData index
+
+  def eventFilter(obj, e)
+    if e.type == Qt::Event::ContextMenu
+      if obj.currentItem
+        emit(
+          productRightClick(
+            obj.item(obj.currentRow, 0)
+              .data(Qt::UserRole).toInt))
+      end
+
+      return true
+    end
+
+    return false
+  end
+end
+
 class Main < Qt::Widget
   include WidgetHelpers
   include Hatchet
 
   slots 'filterActivated(QWidget *)', 'filterDeactivated(QWidget *)',
         'searchFor(const QString &)'
-  signals 'search(QString *)', 'supplierChanged(QObject *)'
+  signals 'search(QString *)',
+          'supplierChanged(QObject *)',
+          'productRightClick(QObject *)'
 
   def initialize(parent=nil)
     super
@@ -41,7 +62,12 @@ class Main < Qt::Widget
 
     @farnellSupplierRB.setChecked true
 
+    @tableEventFilter = TableEventFilter.new
     @productsT.setColumnWidth 0, 400
+    connect @tableEventFilter, SIGNAL('productRightClick(int)') do |i|
+      product = ProductHolder.new @productsData[i]
+      emit productRightClick(product)
+    end
 
     connect @searchFor, SIGNAL('returnPressed()') do searchFor end
     connect @filter, SIGNAL('returnPressed()') do filter end
@@ -138,58 +164,78 @@ class Main < Qt::Widget
 
   def clearProductsTable
     @productsT.setSortingEnabled false
+    @productsT.clearContents
     @productsT.setRowCount 0
+    @productsT.setColumnCount 4
   end
 
   def fillProducts(products)
-    clearProductsTable
-    return if products.nil? or products.empty?
+    @productsT.blockSignals true
 
-    @productsData = products
+    begin
+      clearProductsTable
+      return if products.nil? or products.empty?
 
-    @resultCount.setText "Result: #{products.size}"
+      @productsData = products
 
-    row = 0
-    @productsT.setSortingEnabled false
-    @productsT.setRowCount products.size
+      @resultCount.setText "Result: #{products.size}"
 
-    products.each do |p|
-      row += 1
+      row = 0
+      @productsT.setSortingEnabled false
+      @productsT.setRowCount products.size
 
-      i = Qt::TableWidgetItem.new(p['displayName'])
-      i.setData(Qt::UserRole, qVariantFromValue(row-1))
+      items = []
+      products.each do |p|
+        row += 1
 
-      @productsT.setItem(
-        row-1, 0,
-        i)
+        i = Qt::TableWidgetItem.new(p['displayName'].to_s)
+        i.setData(Qt::UserRole, qVariantFromValue(row-1))
+        items << i
 
-      minQuant = p['translatedMinimumOrderQuality'].to_i
-      i = Qt::TableWidgetItem.new(minQuant.to_s)
-      i.setData(Qt::UserRole, qVariantFromValue(row-1))
+        @productsT.setItem(
+            row-1, 0,
+            i)
 
-      @productsT.setItem(
-        row-1, 1,
-        i)
+        minQuant = p['translatedMinimumOrderQuality'].to_i
+        i1 = Qt::TableWidgetItem.new(minQuant.to_s)
+        i1.setData(Qt::UserRole, qVariantFromValue(row-1))
+        items << i1
 
-      price = p['prices'].is_a?(Array) ?
-        p['prices'][0]['cost'].to_f
-          :
-        p['prices']['cost'].to_f
+        @productsT.setItem(
+            row-1, 1,
+            i1)
 
-      i = Qt::TableWidgetItem.new(price.to_s)
-      i.setData(Qt::UserRole, qVariantFromValue(row-1))
+        price = p['prices'].is_a?(Array) ?
+            p['prices'][0]['cost'].to_f
+        :
+            p['prices']['cost'].to_f
 
-      @productsT.setItem(
-        row-1, 2,
-        i)
+        i2 = Qt::TableWidgetItem.new(price.to_s)
+        i2.setData(Qt::UserRole, qVariantFromValue(row-1))
+        items << i2
 
-      i = Qt::TableWidgetItem.new((minQuant*price).to_s)
-      i.setData(Qt::UserRole, qVariantFromValue(row-1))
+        @productsT.setItem(
+            row-1, 2,
+            i2)
 
-      @productsT.setItem(
-        row-1, 3,
-        i)
+        i3 = Qt::TableWidgetItem.new((minQuant*price).to_s)
+        i3.setData(Qt::UserRole, qVariantFromValue(row-1))
+        items << i3
+
+        @productsT.setItem(
+            row-1, 3,
+            i3)
+      end
+
+      if products.size != 0
+        @productsT.setCurrentCell 0, 0
+        @productsT.sortItems 0
+        @productsT.setSortingEnabled true
+      end
+
+    ensure
+      @productsT.installEventFilter(@tableEventFilter)
+      @productsT.blockSignals false
     end
-    @productsT.setSortingEnabled true
   end
 end

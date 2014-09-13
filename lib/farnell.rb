@@ -3,7 +3,7 @@ require 'xmlsimple'
 require 'pp'
 
 class Product < Hash
-  attr_reader :attributes
+  attr_reader :attributes, :price, :minQuant
 
   def initialize(data)
     merge! data
@@ -19,11 +19,18 @@ class Product < Hash
         end
       end
     end
+
+    @price = data['prices'].is_a?(Array) ?
+        data['prices'][0]['cost'].to_f
+          :
+        data['prices']['cost'].to_f
+    @minQuant = data['translatedMinimumOrderQuality'].to_i
   end
 end
 
 class FarnellClass < Qt::Object
   attr_reader :lastQuery, :cache
+  attr_accessor :apiKey
 
   def initialize
     super(nil)
@@ -64,6 +71,8 @@ class FarnellClass < Qt::Object
         puts "Products with no attributes: #{noAttributes}"
 
         if noAttributes != 0
+          puts 'Going to get missing components attributes.'
+
           sku = products.map { |p| p['sku'] }
           data = remoteCall "id: #{sku.join ' '}", 0, sku.size
 
@@ -96,7 +105,7 @@ class FarnellClass < Qt::Object
             'http://api.element14.com/catalog/products',
 
             {query: {
-                'callInfo.apiKey' => $farnellApiKey,
+                'callInfo.apiKey' => @apiKey,
                 'storeInfo.id' => @storeId,
 
                 'term' => query,
@@ -158,7 +167,7 @@ class FarnellClass < Qt::Object
         'http://api.element14.com/catalog/products', 
 
         {query: {
-          'callInfo.apiKey' => $farnellApiKey,
+          'callInfo.apiKey' => @apiKey,
           'storeInfo.id' => @storeId,
 
           'term' => "any:#{query}",

@@ -18,3 +18,13 @@ module WidgetHelpers
     Qt::MetaObject.connectSlotsByName self
   end
 end
+
+# So that it can be used by signals / slots.
+class ProductHolder < Qt::Object
+  attr_accessor :product
+
+  def initialize(product)
+    super(nil)
+    @product = product
+  end
+end

@@ -3,7 +3,8 @@ require 'xmlsimple'
 require 'pp'
 
 class Product < Hash
-  attr_reader :attributes, :price, :minQuant
+  attr_reader :attributes,
+              :price, :minQuant
 
   def initialize(data)
     merge! data

@@ -33,7 +33,13 @@ end
 class BasketItemGrid < Qt::Widget
   include WidgetHelpers
 
-  signals 'quantityChanged(int, int)' # productIndex, quantity
+  signals 'quantityChanged(int, int)', # productIndex, quantity
+          'deleted(int)' # productIndex
+
+  Item = Struct.new(
+      :productIndex, :displayName,
+      :quantLayoutLE, :quantLayoutL, :quantLayout,
+      :price, :totalPrice, :delete)
 
   def initialize(parent=nil)
     super
@@ -61,19 +67,38 @@ class BasketItemGrid < Qt::Widget
       l.setColumnStretch 3, 0
     end
 
-    @quantities = []
+    @items = []
+    @toDelete = []
+
+    startTimer 1000*60
+  end
+
+  def timerEvent(e)
+    @toDelete.each do |item|
+      item.each {|w| w.dispose if w.is_a? Qt::Object}
+    end
+    @toDelete.clear
   end
 
   def addItem(product)
+    item = Item.new
+
+    item.productIndex = @items.size
+    item.displayName = Qt::Label.new(product['displayName'])
+
     @itemGrid.addWidget(
-        Qt::Label.new(product['displayName']),
+        item.displayName,
         @itemGrid.rowCount, 0)
 
     # Quantity input
-    layout = Qt::HBoxLayout.new
-    layout.addStretch 1
-    layout.addWidget(
-        Qt::Label.new(product.minQuant.to_s+"x"))
+    layout = Qt::HBoxLayout.new do |l|
+      l.addStretch 1
+
+      l1 = Qt::Label.new(product.minQuant.to_s+"x")
+
+      item.quantLayoutL = l1
+      l.addWidget l1
+    end
 
     v = Qt::IntValidator.new
     v.setBottom 1
@@ -83,8 +108,9 @@ class BasketItemGrid < Qt::Widget
     le.setValidator v
     le.setText product['basketQuantity'].to_s
     le.setFixedWidth 41
-    le.setProperty 'productIndex', qVariantFromValue(@itemGrid.rowCount-2)
+    le.setProperty 'productIndex', qVariantFromValue(item.productIndex)
 
+    item.quantLayoutLE = le
     layout.addWidget le
 
     connect le, SIGNAL('textEdited(const QString &)') do |t|
@@ -95,26 +121,57 @@ class BasketItemGrid < Qt::Widget
         layout,
         @itemGrid.rowCount-1, 1)
 
+    item.quantLayout = layout
+
     # Price
+    item.price = Qt::Label.new(product.price.to_s) do |l|
+      l.setAlignment Qt::AlignRight | Qt::AlignVCenter
+    end
+
     @itemGrid.addWidget(
-        Qt::Label.new(product.price.to_s) {|l|
-          l.setAlignment Qt::AlignRight },
+        item.price,
         @itemGrid.rowCount-1, 2)
 
     # Total price
-    @itemGrid.addWidget(
-        (totalPrice =
-            Qt::Label.new(product.totalPriceStr) {|l|
+    item.totalPrice = Qt::Label.new(product.totalPriceStr) do |l|
+      l.setAlignment Qt::AlignRight | Qt::AlignVCenter
+    end
 
-                l.setAlignment Qt::AlignRight }),
+    @itemGrid.addWidget(
+        item.totalPrice,
         @itemGrid.rowCount-1, 3)
 
-    @quantities << [le, totalPrice]
+    # Delete
+    item.delete = Qt::PushButton.new(Qt::Icon.new('pics/cross.png'), '') do |b|
+      b.setFlat(true)
+    end
+
+    connect item.delete, SIGNAL('clicked()') do
+      @toDelete << item
+
+      item.displayName.hide
+      item.price.hide
+      item.totalPrice.hide
+      item.delete.hide
+
+      item.quantLayoutLE.hide
+      item.quantLayoutL.hide
+
+      @items.delete item
+
+      emit deleted(item.productIndex)
+    end
+
+    @itemGrid.addWidget(
+        item.delete,
+        @itemGrid.rowCount-1, 4)
+
+    @items << item
   end
 
   def updateProduct(productIndex, product)
-    @quantities[productIndex][0].setText product['basketQuantity'].to_s
-    @quantities[productIndex][1].setText product.totalPriceStr
+    @items[productIndex].quantLE.setText product['basketQuantity'].to_s
+    @items[productIndex].totalPrice.setText product.totalPriceStr
   end
 end
 
@@ -155,6 +212,12 @@ class Basket < Qt::Widget
 
       updateBasketInfo
 
+      emit basketUpdated()
+    end
+    connect @itemGrid, SIGNAL('deleted(int)') do |productIndex|
+      @items.delete_at productIndex
+
+      updateBasketInfo
       emit basketUpdated()
     end
   end

@@ -2,5 +2,6 @@
   <qresource prefix="pics">
     <file>pics/add.png</file>
     <file>pics/cancel.png</file>
+    <file>pics/cross.png</file>
   </qresource>
 </RCC>

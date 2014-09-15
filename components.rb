@@ -78,13 +78,16 @@ class Components < Qt::MainWindow
 
     connect(
         @products, SIGNAL('productRightClick(QObject *)'),
-        @basketInfo, SLOT('add(QObject *)'))
+        @basket, SLOT('add(QObject *)'))
     connect @basketInfo, SIGNAL('showCompleteBasket()') do
       @stackedWidget.setCurrentWidget @basket
     end
     connect @basket, SIGNAL('closeBasket()') do
       @stackedWidget.setCurrentWidget @products
     end
+    connect(
+        @basket, SIGNAL('basketUpdated()'),
+        @basketInfo, SLOT('basketUpdated()'))
 
     connect $qApp, SIGNAL('lastWindowClosed()') do gone end
 

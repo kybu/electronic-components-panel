@@ -27,6 +27,10 @@ class Product < Hash
         data['prices']['cost'].to_f
     @minQuant = data['translatedMinimumOrderQuality'].to_i
   end
+
+  def totalPriceStr
+    "%0.2f" % (@minQuant*@price*self['basketQuantity'])
+  end
 end
 
 class FarnellClass < Qt::Object

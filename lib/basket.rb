@@ -33,6 +33,7 @@ end
 class BasketItemGrid < Qt::Widget
   include WidgetHelpers
 
+  slots 'deleteAll()'
   signals 'quantityChanged(int, int)', # productIndex, quantity
           'deleted(int)' # productIndex
 
@@ -44,28 +45,9 @@ class BasketItemGrid < Qt::Widget
   def initialize(parent=nil)
     super
 
-    @itemGrid = Qt::GridLayout.new(self) do |l|
-      l.addWidget(
-          Qt::Label.new('<b>Product</b>'),
-          0, 0)
-      l.addWidget(
-          Qt::Label.new('<b>Quantity</b>') {|l|
-            l.setAlignment Qt::AlignHCenter },
-          0, 1)
-      l.addWidget(
-          Qt::Label.new('<b>Price</b>') {|l|
-            l.setAlignment Qt::AlignHCenter },
-          0, 2)
-      l.addWidget(
-          Qt::Label.new('<b>Total price</b>') {|l|
-            l.setAlignment Qt::AlignHCenter },
-          0, 3)
-
-      l.setColumnStretch 0, 1
-      l.setColumnStretch 1, 0
-      l.setColumnStretch 2, 0
-      l.setColumnStretch 3, 0
-    end
+    @itemGrid = Qt::GridLayout.new
+    setLayout @itemGrid
+    initItemGrid
 
     @items = []
     @toDelete = []
@@ -78,6 +60,12 @@ class BasketItemGrid < Qt::Widget
       item.each {|w| w.dispose if w.is_a? Qt::Object}
     end
     @toDelete.clear
+  end
+
+  def deleteAll
+    while (i=@items.pop)
+      deleteItem i, :noSignals
+    end
   end
 
   def addItem(product)
@@ -146,21 +134,7 @@ class BasketItemGrid < Qt::Widget
       b.setFlat(true)
     end
 
-    connect item.delete, SIGNAL('clicked()') do
-      @toDelete << item
-
-      item.displayName.hide
-      item.price.hide
-      item.totalPrice.hide
-      item.delete.hide
-
-      item.quantLayoutLE.hide
-      item.quantLayoutL.hide
-
-      @items.delete item
-
-      emit deleted(item.productIndex)
-    end
+    connect(item.delete, SIGNAL('clicked()')) { deleteItem item}
 
     @itemGrid.addWidget(
         item.delete,
@@ -170,8 +144,49 @@ class BasketItemGrid < Qt::Widget
   end
 
   def updateProduct(productIndex, product)
-    @items[productIndex].quantLE.setText product['basketQuantity'].to_s
+    @items[productIndex].quantLayoutLE.setText product['basketQuantity'].to_s
     @items[productIndex].totalPrice.setText product.totalPriceStr
+  end
+
+  private
+  def initItemGrid
+    l = @itemGrid
+    l.addWidget(
+        Qt::Label.new('<b>Product</b>'),
+        0, 0)
+    l.addWidget(
+        Qt::Label.new('<b>Quantity</b>') {|l|
+          l.setAlignment Qt::AlignHCenter },
+        0, 1)
+    l.addWidget(
+        Qt::Label.new('<b>Price</b>') {|l|
+          l.setAlignment Qt::AlignHCenter },
+        0, 2)
+    l.addWidget(
+        Qt::Label.new('<b>Total price</b>') {|l|
+          l.setAlignment Qt::AlignHCenter },
+        0, 3)
+
+    l.setColumnStretch 0, 1
+    l.setColumnStretch 1, 0
+    l.setColumnStretch 2, 0
+    l.setColumnStretch 3, 0
+  end
+
+  def deleteItem(item, opts = nil)
+    @toDelete << item
+
+    item.displayName.hide
+    item.price.hide
+    item.totalPrice.hide
+    item.delete.hide
+
+    item.quantLayoutLE.hide
+    item.quantLayoutL.hide
+
+    @items.delete item
+
+    emit deleted(item.productIndex) unless opts == :noSignals
   end
 end
 
@@ -180,6 +195,9 @@ class Basket < Qt::Widget
 
   signals 'closeBasket()', 'basketUpdated()'
   slots   'add(QObject *)'
+
+  QUICK_PASTE_LINK = '<a href="quickPaste://">Quick paste</a>'
+  SHOW_BASKET_LINK = '<a href="showBasket://">Show basket</a>'
 
   def initialize
     super
@@ -191,7 +209,16 @@ class Basket < Qt::Widget
     @totalL = findChild Qt::Label, 'totalL'
     @itemsL = findChild Qt::Label, 'itemsL'
     @closeBasketL = findChild Qt::Label, 'closeBasketL'
+    @quickPasteL = findChild Qt::Label, 'quickPasteL'
     @itemsArea = findChild Qt::ScrollArea, 'itemsArea'
+    @deleteBasketPB = findChild Qt::PushButton, 'deleteBasketPB'
+
+    @deleteBasketPB.hide
+    @quickPasteContent = Qt::Label.new do |l|
+      l.setTextInteractionFlags Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard
+      l.hide
+    end
+    @quickPasteL.setText QUICK_PASTE_LINK
 
     @itemGrid = BasketItemGrid.new
     @itemGrid.setSizePolicy(
@@ -199,10 +226,53 @@ class Basket < Qt::Widget
             Qt::SizePolicy.Maximum,
             Qt::SizePolicy.Maximum))
 
+    @itemsArea.widget.layout.insertWidget 0, @quickPasteContent
     @itemsArea.widget.layout.insertWidget 0, @itemGrid
+
+    connect @deleteBasketPB, SIGNAL('clicked()') do
+      @itemGrid.deleteAll
+      @deleteBasketPB.hide
+
+      @items = []
+
+      updateBasketInfo
+      emit basketUpdated()
+    end
 
     connect @closeBasketL, SIGNAL('linkActivated(const QString &)') do
       emit closeBasket()
+    end
+
+    connect @quickPasteL, SIGNAL('linkActivated(const QString &)') do
+      if @itemGrid.isHidden
+        @quickPasteContent.hide
+
+        @quickPasteL.setText QUICK_PASTE_LINK
+
+        m = @itemsArea.widget.layout.contentsMargins
+        m.setTop 0
+        @itemsArea.widget.layout.setContentsMargins m
+
+        @itemGrid.show
+        @deleteBasketPB.show unless @items.empty?
+
+      else
+        @itemGrid.hide
+        @deleteBasketPB.hide
+
+        @quickPasteL.setText SHOW_BASKET_LINK
+
+        m = @itemsArea.widget.layout.contentsMargins
+        m.setTop m.left
+        @itemsArea.widget.layout.setContentsMargins m
+
+        t = @items.reduce('') do |m,i|
+          m+="#{i['sku']}, #{i['basketQuantity']}\n"
+        end
+        @quickPasteContent.setText t
+
+        @quickPasteContent.show
+      end
     end
 
     connect @itemGrid, SIGNAL('quantityChanged(int, int)') do |row, quant|
@@ -211,7 +281,6 @@ class Basket < Qt::Widget
       @itemGrid.updateProduct row, @items[row]
 
       updateBasketInfo
-
       emit basketUpdated()
     end
     connect @itemGrid, SIGNAL('deleted(int)') do |productIndex|
@@ -241,7 +310,6 @@ class Basket < Qt::Widget
     end
 
     updateBasketInfo
-
     emit basketUpdated()
   end
 
@@ -261,5 +329,7 @@ class Basket < Qt::Widget
   def updateBasketInfo
     @itemsL.text = "Items: #{size}"
     @totalL.text = "Total: #{totalStr}"
+
+    size == 0 ? @deleteBasketPB.hide : @deleteBasketPB.show
   end
 end

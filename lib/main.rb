@@ -67,6 +67,8 @@ class Main < Qt::Widget
     connect @tableEventFilter, SIGNAL('productRightClick(int)') do |i|
       product = ProductHolder.new @productsData[i]
       emit productRightClick(product)
+
+      product.dispose
     end
 
     connect @searchFor, SIGNAL('returnPressed()') do searchFor end

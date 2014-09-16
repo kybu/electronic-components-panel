@@ -44,6 +44,13 @@
       </spacer>
      </item>
      <item>
+      <widget class="QLabel" name="quickPasteL">
+       <property name="text">
+        <string>&lt;a href=&quot;quickPaste://&quot;&gt;Quick paste&lt;/a&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QLabel" name="closeBasketL">
        <property name="text">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;closeBasket://&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Close basket&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -70,12 +77,43 @@
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QPushButton" name="deleteBasketPB">
+           <property name="text">
+            <string>Delete the basket</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../components.qrc">
+             <normaloff>:/pics/pics/cross.png</normaloff>:/pics/pics/cross.png</iconset>
+           </property>
+           <property name="autoDefault">
+            <bool>false</bool>
+           </property>
+           <property name="default">
+            <bool>false</bool>
+           </property>
+           <property name="flat">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
        <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
@@ -95,6 +133,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../components.qrc"/>
+ </resources>
  <connections/>
 </ui>

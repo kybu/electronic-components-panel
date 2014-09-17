@@ -80,9 +80,15 @@ class Components < Qt::MainWindow
         @products, SIGNAL('productRightClick(QObject *)'),
         @basket, SLOT('add(QObject *)'))
     connect @basketInfo, SIGNAL('showCompleteBasket()') do
+      @filters.setEnabled false
+      @searchCache.setEnabled false
+
       @stackedWidget.setCurrentWidget @basket
     end
     connect @basket, SIGNAL('closeBasket()') do
+      @filters.setEnabled true
+      @searchCache.setEnabled true
+      
       @stackedWidget.setCurrentWidget @products
     end
     connect(

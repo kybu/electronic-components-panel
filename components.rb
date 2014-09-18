@@ -38,6 +38,30 @@ class Components < Qt::MainWindow
       $supplier.apiKey = apiKey
     end
 
+    # Basket
+    addDock(
+        @basketInfo = BasketInfo.new(@basket),
+        'Basket', 'basket')
+
+    connect(
+        @products, SIGNAL('productRightClick(QObject *)'),
+        @basket, SLOT('add(QObject *)'))
+    connect @basketInfo, SIGNAL('showCompleteBasket()') do
+      @filters.setEnabled false
+      @searchCache.setEnabled false
+
+      @stackedWidget.setCurrentWidget @basket
+    end
+    connect @basket, SIGNAL('closeBasket()') do
+      @filters.setEnabled true
+      @searchCache.setEnabled true
+
+      @stackedWidget.setCurrentWidget @products
+    end
+    connect(
+        @basket, SIGNAL('basketUpdated()'),
+        @basketInfo, SLOT('basketUpdated()'))
+
     # Filters
     addDock(
         @filters = Filters.new,
@@ -72,31 +96,8 @@ class Components < Qt::MainWindow
     # Netlists
     addDock(
         @netlists = Netlists.new,
-        'Netlists', 'netlists')
-
-    # Basket
-    addDock(
-        @basketInfo = BasketInfo.new(@basket),
-        'Basket', 'basket')
-
-    connect(
-        @products, SIGNAL('productRightClick(QObject *)'),
-        @basket, SLOT('add(QObject *)'))
-    connect @basketInfo, SIGNAL('showCompleteBasket()') do
-      @filters.setEnabled false
-      @searchCache.setEnabled false
-
-      @stackedWidget.setCurrentWidget @basket
-    end
-    connect @basket, SIGNAL('closeBasket()') do
-      @filters.setEnabled true
-      @searchCache.setEnabled true
-
-      @stackedWidget.setCurrentWidget @products
-    end
-    connect(
-        @basket, SIGNAL('basketUpdated()'),
-        @basketInfo, SLOT('basketUpdated()'))
+        'Netlists', 'netlists',
+        Qt::BottomDockWidgetArea)
 
     connect $qApp, SIGNAL('lastWindowClosed()') do gone end
 
@@ -119,14 +120,16 @@ class Components < Qt::MainWindow
   end
 
   private
-  def addDock(widget, title, objectName)
+  def addDock(widget, title, objectName, dockWidgetArea=Qt::LeftDockWidgetArea)
     dock = Qt::DockWidget.new title, self
     dock.setObjectName objectName
     dock.allowedAreas = Qt::AllDockWidgetAreas
     dock.widget = widget
 
-    addDockWidget Qt::LeftDockWidgetArea, dock
-    menuBar.addAction dock.toggleViewAction
+    addDockWidget dockWidgetArea, dock
+    menuBar.addAction (toggle=dock.toggleViewAction)
+
+    yield dock, toggle if block_given?
   end
 end
 

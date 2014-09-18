@@ -13,6 +13,8 @@ require_relative 'lib/basket'
 
 app = Qt::Application.new(ARGV)
 
+$supplier = nil
+
 class Components < Qt::MainWindow
   def initialize(parent=nil)
     super
@@ -30,10 +32,11 @@ class Components < Qt::MainWindow
     setCentralWidget @stackedWidget
 
     @settings = SettingsDialog.new
+    connect @settings, SIGNAL('supplierChanged(QObject *)'),
+                  @products, SLOT('supplierChanged(QObject *)')
     connect @settings, SIGNAL('farnellApiKeyChanged(const QString &)') do |apiKey|
-      $farnell.apiKey = apiKey
+      $supplier.apiKey = apiKey
     end
-    @settings.load
 
     # Filters
     addDock(
@@ -54,27 +57,27 @@ class Components < Qt::MainWindow
     # Search cache
     addDock(
         @searchCache = SearchCache.new,
-        'Search cache',
-        'searchCache')
+        'Search cache', 'searchCache')
 
     connect(
-        @products, SIGNAL('supplierChanged(QObject *)'),
+        @settings, SIGNAL('supplierChanged(QObject *)'),
         @searchCache, SLOT('supplierChanged(QObject *)'))
     connect(
         @searchCache, SIGNAL('cacheSelected(const QString &)'),
         @products, SLOT('searchFor(const QString &)'))
+    connect(
+        @products, SIGNAL('search(QString *)'),
+        @searchCache, SLOT('refreshCache()'))
 
     # Netlists
     addDock(
         @netlists = Netlists.new,
-        'Netlists',
-        'netlists')
+        'Netlists', 'netlists')
 
     # Basket
     addDock(
         @basketInfo = BasketInfo.new(@basket),
-        'Basket',
-        'basket')
+        'Basket', 'basket')
 
     connect(
         @products, SIGNAL('productRightClick(QObject *)'),
@@ -88,7 +91,7 @@ class Components < Qt::MainWindow
     connect @basket, SIGNAL('closeBasket()') do
       @filters.setEnabled true
       @searchCache.setEnabled true
-      
+
       @stackedWidget.setCurrentWidget @products
     end
     connect(
@@ -102,9 +105,9 @@ class Components < Qt::MainWindow
 
     connect settingsA, SIGNAL('triggered()') do settings end
 
-    @products.refresh
-
     Settings.restoreMainWindowSettings self
+
+    @settings.load
   end
 
   def gone

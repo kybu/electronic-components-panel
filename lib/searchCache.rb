@@ -5,7 +5,7 @@ require 'Qt'
 class SearchCache < Qt::Widget
   include WidgetHelpers
 
-  slots 'supplierChanged(QObject *)'
+  slots 'supplierChanged(QObject *)', 'refreshCache()'
   signals 'cacheSelected(const QString &)'
 
   def initialize(parent=nil)
@@ -22,6 +22,10 @@ class SearchCache < Qt::Widget
   end
 
   def supplierChanged(supplier)
+    refreshCache supplier
+  end
+
+  def refreshCache(supplier=$supplier)
     @cacheL.clear
     supplier.cache.each_key do |k|
       @cacheL.addItem(k) unless k =~ /_resultCount$/

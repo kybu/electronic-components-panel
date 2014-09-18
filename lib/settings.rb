@@ -12,6 +12,7 @@ class Settings
   MAINWINDOW_STATE_REG = 'mainWindowState'
   MAINWINDOW_GEOMETRY_REG = 'mainWindowGeometry'
   FARNELLAPI_REG = 'farnellApiKey'
+  FARNELLSHOP_REG = 'farnellShop'
 
   def self.restoreMainWindowSettings(mWindow)
     mainWindowState = @settings.value(MAINWINDOW_STATE_REG).toByteArray
@@ -32,33 +33,87 @@ class Settings
     @settings.sync
   end
 
-  def self.saveSettings(settings)
+  def self.saveSettings(settingsDialog)
     @settings.setValue(
         FARNELLAPI_REG,
-        Qt::Variant.fromValue(settings.farnellApiKey))
+        Qt::Variant.fromValue(settingsDialog.farnellApiKey))
+    @settings.setValue(
+        FARNELLSHOP_REG,
+        Qt::Variant.fromValue(settingsDialog.farnellShop))
   end
 
-  def self.loadSettings(settings)
-    farnellApiKey = @settings.value(FARNELLAPI_REG).toString
-
-    settings.farnellApiKey = farnellApiKey
+  def self.loadSettings(settingsDialog)
+    settingsDialog.farnellShop = @settings.value(FARNELLSHOP_REG).toString
+    settingsDialog.farnellApiKey = @settings.value(FARNELLAPI_REG).toString
   end
 end
 
 class SettingsDialog < Qt::Dialog
   include WidgetHelpers
 
-  signals 'farnellApiKeyChanged(const QString &)'
+  signals 'farnellApiKeyChanged(const QString &)',
+                'supplierChanged(QObject *)'
 
   def initialize(parent=nil)
     super
+
+    @farnellShops =%w{
+bg.farnell.com
+cz.farnell.com
+dk.farnell.com
+at.farnell.com
+ch.farnell.com
+de.farnell.com
+cpc.farnell.com
+cpcireland.farnell.com
+export.farnell.com
+onecall.farnell.com
+ie.farnell.com
+il.farnell.com
+uk.farnell.com
+es.farnell.com
+ee.farnell.com
+fi.farnell.com
+fr.farnell.com
+hu.farnell.com
+it.farnell.com
+lt.farnell.com
+lv.farnell.com
+be.farnell.com
+nl.farnell.com
+no.farnell.com
+pl.farnell.com
+pt.farnell.com
+ro.farnell.com
+ru.farnell.com
+sk.farnell.com
+si.farnell.com
+se.farnell.com
+tr.farnell.com
+canada.newark.com
+mexico.newark.com
+www.newark.com
+cn.element14.com
+au.element14.com
+nz.element14.com
+hk.element14.com
+sg.element14.com
+my.element14.com
+ph.element14.com
+th.element14.com
+in.element14.com
+tw.element14.com
+kr.element14.com}
 
     loadUi 'Settings'
 
     setWindowTitle 'Settings'
 
     @farnellApiKeyLE = findChild Qt::LineEdit, 'farnellApiKeyLE'
+    @farnellShopsCB = findChild Qt::ComboBox, 'farnellShopsCB'
     @buttonBox = findChild Qt::DialogButtonBox, 'buttonBox'
+
+    @farnellShops.each {|s| @farnellShopsCB.addItem s}
 
     connect @buttonBox, SIGNAL('accepted()'), self, SLOT('accept()')
     connect @buttonBox, SIGNAL('rejected()'), self, SLOT('reject()')
@@ -73,11 +128,45 @@ class SettingsDialog < Qt::Dialog
     emit farnellApiKeyChanged(value)
   end
 
+  def farnellShop
+    return @farnellShopsCB.currentText
+  end
+
+  def farnellShop=(value)
+    shop = @farnellShops.find_index value
+    unless shop
+      value = 'uk.farnell.com'
+      shop = @farnellShops.find_index value
+    end
+
+    @farnellShopsCB.setCurrentIndex shop
+
+    newFarnellSupplier value
+  end
+
+  def accept
+    save
+
+    newFarnellSupplier @farnellShopsCB.currentText
+    emit farnellApiKeyChanged @farnellApiKeyLE.text
+
+    super
+  end
+
   def save
     Settings.saveSettings self
   end
 
   def load
     Settings.loadSettings self
+  end
+
+  private
+  def newFarnellSupplier(shopId)
+    if $supplier.nil? || $supplier.id != shopId
+      $supplier.dispose if $supplier
+      $supplier = Farnell.new shopId
+      emit supplierChanged $supplier
+    end
   end
 end

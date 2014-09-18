@@ -100,7 +100,7 @@ class Filters < Qt::Widget
           return false
         })
 
-    @noFiltersL.hide if not @filters.empty?
+    @noFiltersL.hide unless @filters.empty?
 
     @filtersLayout.addSpacerItem(
         Qt::SpacerItem.new(

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>265</width>
-    <height>104</height>
+    <width>246</width>
+    <height>132</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,11 +21,28 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>&amp;Shop</string>
+          </property>
+          <property name="buddy">
+           <cstring>farnellShopsCB</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="farnellShopsCB"/>
+        </item>
+       </layout>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
          <widget class="QLabel" name="label">
           <property name="text">
-           <string>API key</string>
+           <string>&amp;API key</string>
           </property>
           <property name="buddy">
            <cstring>farnellApiKeyLE</cstring>

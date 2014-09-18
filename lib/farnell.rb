@@ -33,15 +33,15 @@ class Product < Hash
   end
 end
 
-class FarnellClass < Qt::Object
-  attr_reader :lastQuery, :cache
+class Farnell < Qt::Object
+  attr_reader :lastQuery, :cache, :id
   attr_accessor :apiKey
 
-  def initialize
+  def initialize(storeId = 'uk.farnell.com')
     super(nil)
 
     @lastQuery = nil
-    @storeId ||= 'uk.farnell.com'
+    @id = @storeId = storeId
 
     loadCache
   end
@@ -248,14 +248,3 @@ class FarnellClass < Qt::Object
     end
   end
 end
-
-class CpcClass < FarnellClass
-  def initialize
-    @storeId = 'cpc.farnell.com'
-
-    super
-  end
-end
-
-$farnell = FarnellClass.new
-$cpc = CpcClass.new

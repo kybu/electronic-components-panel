@@ -31,10 +31,11 @@ class Main < Qt::Widget
   include Hatchet
 
   slots 'filterActivated(QWidget *)', 'filterDeactivated(QWidget *)',
-        'searchFor(const QString &)'
+            'searchFor(const QString &)', 'supplierChanged(QObject *)'
+
   signals 'search(QString *)',
-          'supplierChanged(QObject *)',
-          'productRightClick(QObject *)'
+                'supplierChanged(QObject *)',
+                'productRightClick(QObject *)'
 
   def initialize(parent=nil)
     super
@@ -44,23 +45,17 @@ class Main < Qt::Widget
     @productsData = []
     @activeFilters = []
 
-    @supplier = $farnell
-
     @searchFor = findChild Qt::LineEdit, 'searchInputL'
     @filter = findChild Qt::LineEdit, 'filterL'
 
     @productsT = findChild Qt::TableWidget, 'productsT'
     @resultCount = findChild Qt::Label, 'resultCountL'
+    @shopL = findChild Qt::Label, 'shopL'
     @cacheL = findChild Qt::ListWidget, 'cacheL'
 
     @productInfoGroup = findChild Qt::GroupBox, 'productInfoG'
     @productInfoGroup.hide
     @productInfo = findChild Qt::Label, 'productInfoL'
-
-    @farnellSupplierRB = findChild Qt::RadioButton, 'farnellRB'
-    @cpcSupplierRB = findChild Qt::RadioButton, 'cpcRB'
-
-    @farnellSupplierRB.setChecked true
 
     @tableEventFilter = TableEventFilter.new
     @productsT.setColumnWidth 0, 400
@@ -99,23 +94,6 @@ class Main < Qt::Widget
 #
 #      @productImage.setPixmap pix
     end
-
-    connect @farnellSupplierRB, SIGNAL('toggled(bool)') do
-      @supplier = $farnell
-      clearProductsTable
-
-      emit supplierChanged(@supplier)
-    end
-    connect @cpcSupplierRB, SIGNAL('toggled(bool)') do
-      @supplier = $cpc
-      clearProductsTable
-
-      emit supplierChanged(@supplier)
-    end
-  end
-
-  def refresh
-    emit supplierChanged(@supplier)
   end
 
   def filterActivated(filter)
@@ -131,23 +109,28 @@ class Main < Qt::Widget
   end
 
   def filter
-    data = @supplier.filter(@filter.text)
+    data = $supplier.filter(@filter.text)
 
     fillProducts(data)
   end
 
   def searchFor(search=nil)
     query = search || @searchFor.text
-    @searchFor.setText(query)
+    @searchFor.setText query
 
-    resultCount = @supplier.resultCount query
+    resultCount = $supplier.resultCount query
     @resultCount.setText "Result: #{resultCount}"
 
-    products = @supplier.searchFor query, resultCount
+    products = $supplier.searchFor query, resultCount
 
     fillProducts products
 
     emit search(@searchFor.text)
+  end
+
+  def supplierChanged(supplier)
+    @shopL.setText 'Shop: '+supplier.id
+    clearProductsTable
   end
 
   private
@@ -156,7 +139,7 @@ class Main < Qt::Widget
     clearProductsTable
 
     filteredProducts = []
-    @supplier.fetchCache(@supplier.lastQuery).each do |p|
+    $supplier.fetchCache($supplier.lastQuery).each do |p|
       ok = @activeFilters.reduce(true) {|m, f| m and f.eval p}
       filteredProducts << p if ok
     end
@@ -169,6 +152,8 @@ class Main < Qt::Widget
     @productsT.clearContents
     @productsT.setRowCount 0
     @productsT.setColumnCount 4
+
+    @resultCount.setText 'Results: -'
   end
 
   def fillProducts(products)
@@ -212,21 +197,17 @@ class Main < Qt::Widget
         :
             p['prices']['cost'].to_f
 
-        i2 = Qt::TableWidgetItem.new(price.to_s)
-        i2.setData(Qt::UserRole, qVariantFromValue(row-1))
+        i2 = Qt::TableWidgetItem.new price.to_s
+        i2.setData Qt::UserRole, qVariantFromValue(row-1)
         items << i2
 
-        @productsT.setItem(
-            row-1, 2,
-            i2)
+        @productsT.setItem row-1, 2, i2
 
-        i3 = Qt::TableWidgetItem.new((minQuant*price).to_s)
-        i3.setData(Qt::UserRole, qVariantFromValue(row-1))
+        i3 = Qt::TableWidgetItem.new (minQuant*price).to_s
+        i3.setData Qt::UserRole, qVariantFromValue(row-1)
         items << i3
 
-        @productsT.setItem(
-            row-1, 3,
-            i3)
+        @productsT.setItem row-1, 3, i3
       end
 
       if products.size != 0

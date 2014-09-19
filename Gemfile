@@ -6,3 +6,5 @@ gem "qtbindings-qt"
 gem "httparty"
 gem "xml-simple"
 gem "hatchet"
+gem 'childprocess'
+gem 'ffi'

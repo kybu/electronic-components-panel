@@ -79,26 +79,17 @@ class Farnell < Qt::Object
   def searchFor(query, numberOfResults = 10)
       @lastQuery = query
 
-      puts "Looking for #{query} (#{numberOfResults})"
-
       products = []
-      if (products=fetchCache(query))
-        puts "From cache"
-      else
+      unless (products=fetchCache(query))
         data = remoteCall 'any:'+query, 0, numberOfResults
 
         products, noAttributes = rawDataToProducts(data)
-        puts "Products with no attributes: #{noAttributes}"
 
         if noAttributes != 0
-          puts 'Going to get missing components attributes.'
-
           sku = products.map { |p| p['sku'] }
           data = remoteCall "id: #{sku.join ' '}", 0, sku.size
 
           products, noAttributes = rawDataToProducts(data)
-
-          puts "Products with no attributes: #{noAttributes}"
         end
 
       storeCache query, products
@@ -111,8 +102,6 @@ class Farnell < Qt::Object
     ret = {}
     fetched = 0
     numberOfResults = numberOfResults.to_i
-
-    print 'Fetched ... '
 
     while fetched < numberOfResults
       toFetch = numberOfResults - fetched
@@ -149,8 +138,6 @@ class Farnell < Qt::Object
         else
           fetched += toFetch
 
-          print "#{fetched} ... "
-
           # s=''
           # File.write(query, PP.pp(data, s))
 
@@ -178,7 +165,6 @@ class Farnell < Qt::Object
 
   def resultCount(query)
     if (t=fetchCache(query+'_resultCount'))
-      puts "From cache"
       return t
     end
 
@@ -209,14 +195,11 @@ class Farnell < Qt::Object
         pp data
 
       else
-        puts "resultCount ... OK"
-
         storeCache(query+'_resultCount', data['keywordSearchReturn']['numberOfResults'].to_i)
 
         return data['keywordSearchReturn']['numberOfResults'].to_i
       end
 
-      puts 'sleeping ...'
       sleep 2
     end
   end

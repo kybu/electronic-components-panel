@@ -13,14 +13,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
+require_relative 'logging'
+require_relative 'helpers'
+require_relative 'farnell'
+
 require 'Qt'
 require 'qtuitools'
 require 'httparty'
 require 'xmlsimple'
-
-require_relative 'logging'
-require_relative 'helpers'
-require_relative 'farnell'
+require 'childprocess'
 
 class TableEventFilter < Qt::Object
   signals 'productRightClick(int)' # productsData index
@@ -41,12 +42,25 @@ class TableEventFilter < Qt::Object
   end
 end
 
+module QueryProcess
+  attr_accessor :r, :w
+
+  def self.extended(m)
+    m.r, m.w = IO.pipe 'ASCII-8BIT:ASCII-8BIT'
+
+    #m.io.stderr = m.w
+    m.io.stdout = m.w
+  end
+end
+
 class Main < Qt::Widget
   include WidgetHelpers
   include Hatchet
 
   slots 'filterActivated(QWidget *)', 'filterDeactivated(QWidget *)',
-            'searchFor(const QString &)', 'supplierChanged(QObject *)'
+            'searchFor(const QString &)', 'supplierChanged(QObject *)',
+
+            'progressBarMax(int)', 'queryProgress(int)'
 
   signals 'search(QString *)',
                 'supplierChanged(QObject *)',
@@ -56,6 +70,8 @@ class Main < Qt::Widget
     super
 
     loadUi 'main'
+
+    @queryProcess = nil
 
     @productsData = []
     @activeFilters = []
@@ -71,6 +87,10 @@ class Main < Qt::Widget
     @productInfoGroup = findChild Qt::GroupBox, 'productInfoG'
     @productInfoGroup.hide
     @productInfo = findChild Qt::Label, 'productInfoL'
+
+    @queryPB = findChild Qt::ProgressBar, 'queryPB'
+    @progressWidgetHolder = findChild Qt::Widget, 'progressWidgetHolder'
+    @progressWidgetHolder.hide
 
     @tableEventFilter = TableEventFilter.new
     @productsT.setColumnWidth 0, 400
@@ -133,14 +153,30 @@ class Main < Qt::Widget
     query = search || @searchFor.text
     @searchFor.setText query
 
-    resultCount = $supplier.resultCount query
-    @resultCount.setText "Result: #{resultCount}"
+    @queryProcess = ChildProcess.build(
+        Helpers.actualRubyExecutable, $0,
+        '-q', $supplier.id, search)
+    @queryProcess.extend QueryProcess
 
-    products = $supplier.searchFor query, resultCount
+    @queryProcess.start
+    @queryProcess.w.close
+    payload = @queryProcess.r.read
+
+    products = Marshal.load Base64.decode64(payload)
+
+    @resultCount.setText "Result: #{products.size}"
 
     fillProducts products
 
     emit search(@searchFor.text)
+  end
+
+  def progressBarMax(max)
+    @queryPB.setMaximum max
+  end
+
+  def queryProgress(prog)
+    @queryPB.setValue prog
   end
 
   def supplierChanged(supplier)

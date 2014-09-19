@@ -17,6 +17,7 @@ Dir.chdir File.dirname(__FILE__)
 
 require 'Qt'
 require 'pp'
+require 'base64'
 
 require_relative 'lib/main'
 require_relative 'lib/farnell'
@@ -148,6 +149,18 @@ class Components < Qt::MainWindow
   end
 end
 
-Components.new.show
-app.exec
+if ARGV.include? '-q'
+  $supplier = Farnell.new ARGV[1]
+  query = ARGV[2]
+
+  resultCount = $supplier.resultCount query
+  print Base64.encode64(
+              Marshal.dump(
+                $supplier.searchFor query, resultCount))
+
+else
+  Components.new.show
+  app.exec
+end
+
 

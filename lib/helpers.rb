@@ -15,6 +15,7 @@
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
 require 'Qt'
 require 'qtuitools'
+require 'ffi'
 
 module WidgetHelpers
   def loadUi(uiFile)
@@ -41,5 +42,25 @@ class ProductHolder < Qt::Object
   def initialize(product)
     super(nil)
     @product = product
+  end
+end
+
+module Helpers
+  extend FFI::Library
+  ffi_lib :kernel32
+
+  typedef :uintptr_t, :hmodule
+  typedef :ulong, :dword
+
+  attach_function :GetModuleHandle, :GetModuleHandleA, [:string], :hmodule
+  attach_function :GetModuleFileName, :GetModuleFileNameA, [:hmodule, :pointer, :dword], :dword
+
+  def self.actualRubyExecutable
+    processHandle = GetModuleHandle nil
+
+    rubyPath = FFI::MemoryPointer.new 1000
+    rubyPathSize = GetModuleFileName processHandle, rubyPath, 999
+
+    rubyPath.read_string rubyPathSize
   end
 end

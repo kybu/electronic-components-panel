@@ -8,3 +8,5 @@ gem "xml-simple"
 gem "hatchet"
 gem 'childprocess'
 gem 'ffi'
+gem 'beefcake'
+gem 'test-unit'

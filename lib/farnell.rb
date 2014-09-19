@@ -13,13 +13,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
+require_relative 'helpers'
+
 require 'httparty'
 require 'xmlsimple'
 require 'pp'
 
 class Product < Hash
   attr_reader :attributes,
-              :price, :minQuant
+                      :price, :minQuant
 
   def initialize(data)
     merge! data
@@ -52,6 +54,8 @@ class Farnell < Qt::Object
   attr_reader :lastQuery, :cache, :id
   attr_accessor :apiKey
 
+  signals 'searchResultFromCache()', 'products(QObject *)'
+
   def initialize(storeId = 'uk.farnell.com')
     super(nil)
 
@@ -77,23 +81,26 @@ class Farnell < Qt::Object
   end
 
   def searchFor(query, numberOfResults = 10)
-      @lastQuery = query
+    @lastQuery = query
 
-      products = []
-      unless (products=fetchCache(query))
-        data = remoteCall 'any:'+query, 0, numberOfResults
+    products = []
+    unless (products=fetchCache(query))
+      data = remoteCall 'any:'+query, 0, numberOfResults
+
+      products, noAttributes = rawDataToProducts(data)
+
+      if noAttributes != 0
+        sku = products.map { |p| p['sku'] }
+        data = remoteCall "id: #{sku.join ' '}", 0, sku.size
 
         products, noAttributes = rawDataToProducts(data)
-
-        if noAttributes != 0
-          sku = products.map { |p| p['sku'] }
-          data = remoteCall "id: #{sku.join ' '}", 0, sku.size
-
-          products, noAttributes = rawDataToProducts(data)
-        end
+      end
 
       storeCache query, products
     end
+
+    emit products(h = ProductsHolder.new(products))
+    h.dispose
 
     return products
   end

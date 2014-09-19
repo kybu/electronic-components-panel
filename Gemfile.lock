@@ -1,6 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    beefcake (1.0.0)
     childprocess (0.5.3)
       ffi (~> 1.0, >= 1.0.11)
     ffi (1.9.3-x86-mingw32)
@@ -10,19 +11,24 @@ GEM
       multi_xml (>= 0.5.2)
     json (1.8.1)
     multi_xml (0.5.5)
+    power_assert (0.1.3)
     qtbindings (4.8.5.2-x86-mingw32)
       qtbindings-qt (= 4.8.5)
     qtbindings-qt (4.8.5-x86-mingw32)
+    test-unit (3.0.1)
+      power_assert
     xml-simple (1.1.4)
 
 PLATFORMS
   x86-mingw32
 
 DEPENDENCIES
+  beefcake
   childprocess
   ffi
   hatchet
   httparty
   qtbindings
   qtbindings-qt
+  test-unit
   xml-simple

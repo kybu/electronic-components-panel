@@ -16,6 +16,7 @@
 require_relative 'logging'
 require_relative 'helpers'
 require_relative 'farnell'
+require_relative 'comm'
 
 require 'Qt'
 require 'qtuitools'
@@ -162,7 +163,10 @@ class Main < Qt::Widget
     @queryProcess.w.close
     payload = @queryProcess.r.read
 
-    products = Marshal.load Base64.decode64(payload)
+    products = (Marshal.load(
+        CommMsgs::TransportMsg.
+            received(payload).toMsg.
+            products.data))
 
     @resultCount.setText "Result: #{products.size}"
 

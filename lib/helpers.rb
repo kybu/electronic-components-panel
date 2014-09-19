@@ -16,6 +16,7 @@
 require 'Qt'
 require 'qtuitools'
 require 'ffi'
+require 'base64'
 
 module WidgetHelpers
   def loadUi(uiFile)
@@ -35,6 +36,18 @@ module WidgetHelpers
   end
 end
 
+module Base64Helpers
+  extend self
+
+  def to64(str)
+    Base64.strict_encode64 str
+  end
+
+  def from64(str)
+    Base64.strict_decode64 str
+  end
+end
+
 # So that it can be used by signals / slots.
 class ProductHolder < Qt::Object
   attr_accessor :product
@@ -42,6 +55,16 @@ class ProductHolder < Qt::Object
   def initialize(product)
     super(nil)
     @product = product
+  end
+end
+
+# So that it can be used by signals / slots.
+class ProductsHolder < Qt::Object
+  attr_accessor :products
+
+  def initialize(products)
+    super(nil)
+    @products = products
   end
 end
 

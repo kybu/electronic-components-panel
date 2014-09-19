@@ -26,6 +26,7 @@ require_relative 'lib/settings'
 require_relative 'lib/searchCache'
 require_relative 'lib/netlists'
 require_relative 'lib/basket'
+require_relative 'lib/comm'
 
 app = Qt::Application.new(ARGV)
 
@@ -152,11 +153,14 @@ end
 if ARGV.include? '-q'
   $supplier = Farnell.new ARGV[1]
   query = ARGV[2]
+  comm = QueryChildMsgs.new
+
+  $qApp.connect(
+      $supplier, SIGNAL('products(QObject *)'),
+      comm, SLOT('products(QObject *)'))
 
   resultCount = $supplier.resultCount query
-  print Base64.encode64(
-              Marshal.dump(
-                $supplier.searchFor query, resultCount))
+  $supplier.searchFor query, resultCount
 
 else
   Components.new.show

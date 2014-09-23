@@ -17,17 +17,25 @@ require_relative 'helpers'
 
 require 'Qt'
 
+$settingsRegistryKey ||= 'Components'
+
 class Settings
   @settings = Qt::Settings.new(
       Qt::Settings.UserScope,
       Qt::Settings.NativeFormat,
       'kybu',
-      'Components')
+      $settingsRegistryKey)
 
   MAINWINDOW_STATE_REG = 'mainWindowState'
   MAINWINDOW_GEOMETRY_REG = 'mainWindowGeometry'
   FARNELLAPI_REG = 'farnellApiKey'
   FARNELLSHOP_REG = 'farnellShop'
+  BASKET_REG = 'basket'
+
+  def self.deleteAll
+    @settings.remove ''
+    @settings.sync
+  end
 
   def self.restoreMainWindowSettings(mWindow)
     mainWindowState = @settings.value(MAINWINDOW_STATE_REG).toByteArray
@@ -55,6 +63,8 @@ class Settings
     @settings.setValue(
         FARNELLSHOP_REG,
         Qt::Variant.fromValue(settingsDialog.farnellShop))
+
+    @settings.sync
   end
 
   def self.loadSettings(settingsDialog = nil)
@@ -64,6 +74,37 @@ class Settings
     if settingsDialog != nil
       settingsDialog.farnellShop = @farnellShop
       settingsDialog.farnellApiKey = @farnellApiKey
+    end
+  end
+
+  def self.saveBasket(supplierId, basket)
+    b = @settings.value(BASKET_REG).toByteArray
+
+    oldBasket = {}
+    if b and !b.empty?
+      oldBasket = Marshal.load b.to_s
+    end
+
+    newBasket = {}
+    newBasket[supplierId] = basket.items
+    oldBasket.merge! newBasket
+
+    @settings.setValue(
+        BASKET_REG,
+        Qt::Variant.fromValue(
+            Qt::ByteArray.new(Marshal.dump oldBasket)))
+
+    @settings.sync
+  end
+
+  def self.loadBasket(storeId, basket)
+    ba = @settings.value(BASKET_REG).toByteArray
+    if !ba.isEmpty
+      baskets = Marshal.load ba.to_s
+
+      if baskets.has_key? storeId
+        basket.add baskets[storeId]
+      end
     end
   end
 

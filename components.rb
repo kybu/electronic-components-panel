@@ -134,12 +134,13 @@ class Components < Qt::MainWindow
     connect settingsA, SIGNAL('triggered()') do settings end
 
     Settings.restoreMainWindowSettings self
-
     @settings.load
+    Settings.loadBasket $supplier.id, @basket
   end
 
   def gone
     Settings.saveMainWindowSettings self
+    Settings.saveBasket $supplier.id, @basket
   end
 
   def settings

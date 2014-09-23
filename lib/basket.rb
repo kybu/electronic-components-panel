@@ -208,6 +208,8 @@ end
 class Basket < Qt::Widget
   include WidgetHelpers
 
+  attr_reader :items
+
   signals 'closeBasket()', 'basketUpdated()'
   slots   'add(QObject *)'
 
@@ -307,25 +309,15 @@ class Basket < Qt::Widget
   end
 
   def add(product_)
-    product = product_.product
+    if product_.kind_of? Qt::Object
+      addItem product_.product
 
-    if productIndex =
-       (@items.find_index {|p| p['sku'] == product['sku']})
-
-      @items[productIndex]['basketQuantity'] += 1
-      @itemGrid.updateProduct(
-          productIndex,
-          @items[productIndex])
+    elsif product_.kind_of? Array
+      product_.each {|p| addItem p}
 
     else
-      product['basketQuantity'] = 1
-      @items << product
-
-      @itemGrid.addItem product
+      raise "wrong class of basket item!"
     end
-
-    updateBasketInfo
-    emit basketUpdated()
   end
 
   def size
@@ -346,5 +338,25 @@ class Basket < Qt::Widget
     @totalL.text = "Total: #{totalStr}"
 
     size == 0 ? @deleteBasketPB.hide : @deleteBasketPB.show
+  end
+
+  def addItem(item)
+    if itemIndex =
+        (@items.find_index {|p| p['sku'] == item['sku']})
+
+      @items[itemIndex]['basketQuantity'] += 1
+      @itemGrid.updateProduct(
+          itemIndex,
+          @items[itemIndex])
+
+    else
+      item['basketQuantity'] = 1 unless item.has_key? 'basketQuantity'
+      @items << item
+
+      @itemGrid.addItem item
+    end
+
+    updateBasketInfo
+    emit basketUpdated()
   end
 end

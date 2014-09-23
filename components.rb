@@ -106,9 +106,16 @@ class Components < Qt::MainWindow
     connect(
         @searchCache, SIGNAL('cacheSelected(const QString &)'),
         @products, SLOT('searchFor(const QString &)'))
-    connect(
-        @products, SIGNAL('search(QString *)'),
-        @searchCache, SLOT('refreshCache()'))
+    connect @products, SIGNAL('searchStarted(const QString &)') do
+      @searchCache.setEnabled false
+    end
+    connect @products, SIGNAL('searchCancelled()') do
+      @searchCache.setEnabled true
+    end
+    connect @products, SIGNAL('search(QString *)') do
+      @searchCache.setEnabled true
+      @searchCache.refreshCache
+    end
 
     # Netlists
     addDock(
@@ -151,16 +158,35 @@ class Components < Qt::MainWindow
 end
 
 if ARGV.include? '-q'
+  $stdin.close
   $supplier = Farnell.new ARGV[1]
+
+  Settings.loadSettings
+  $supplier.apiKey = Settings.farnellApiKey
+
   query = ARGV[2]
   comm = QueryChildMsgs.new
 
   $qApp.connect(
       $supplier, SIGNAL('products(QObject *)'),
       comm, SLOT('products(QObject *)'))
+  $qApp.connect(
+      $supplier, SIGNAL('numberOfProducts(int)'),
+      comm, SLOT('numberOfProducts(int)'))
+  $qApp.connect(
+      $supplier, SIGNAL('productsFetched(int)'),
+      comm, SLOT('productsFetched(int)'))
+  $qApp.connect(
+      $supplier, SIGNAL('searchResultsFromCache()'),
+      comm, SLOT('searchResultsFromCache()'))
+  $qApp.connect(
+      $supplier, SIGNAL('communicationIssue(const QString &)'),
+      comm, SLOT('commIssues(const QString &)'))
 
   resultCount = $supplier.resultCount query
   $supplier.searchFor query, resultCount
+
+  exit 0
 
 else
   Components.new.show

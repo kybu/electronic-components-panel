@@ -43,15 +43,88 @@ class TableEventFilter < Qt::Object
   end
 end
 
-module QueryProcess
-  attr_accessor :r, :w
+class QueryProcess < Qt::Object
+  include Base64Helpers
 
-  def self.extended(m)
-    m.r, m.w = IO.pipe 'ASCII-8BIT:ASCII-8BIT'
+  attr_reader :process
 
-    #m.io.stderr = m.w
-    m.io.stdout = m.w
+  signals 'searchResultsFromCache()',
+               'products(QObject *)',
+               'numberOfProducts(int)',
+               'productsFetched(int)'
+
+  def initialize(storeId, query)
+    super nil
+
+    @msg = CommMsgs::TransportMsg.streamed
+    @rawData = ''
+    @receivedBytes = 0
+
+    @process = ChildProcess.build(
+        Helpers.actualRubyExecutable, $0,
+        '-q', storeId, query)
+
+    @r, @w = IO.pipe
+    @process.io.stdout = @w
   end
+
+  def start
+    @process.start
+    @w.close
+  end
+
+  def receiveStream(opts = {})
+    opts[:maxTime] ||= 0.173
+    t1 = Time.now
+
+    while (
+        ((bytes = PipeHelpers.availBytes @r) > 0 or not @rawData.empty?) and
+        (opts[:drain] or Time.now - t1 < opts[:maxTime]))
+
+      if bytes > 0
+        @rawData += @r.readpartial bytes
+        @receivedBytes += bytes
+      end
+
+      @rawData = @msg.received @rawData
+
+      if msgAvailable?
+        msg = @msg.toMsg
+        @msg.clear
+
+        case msg.type
+
+          when CommMsgs::NumberOfProducts::ID
+            emit numberOfProducts(msg.numberOfProducts.count)
+
+          when CommMsgs::ProductsFetched::ID
+            emit productsFetched(msg.productsFetched.count)
+
+          when CommMsgs::SearchResultsFromCache::ID
+            emit searchResultsFromCache()
+
+          when CommMsgs::Products::ID
+            h = ProductsHolder.new(
+                Marshal.load(msg.products.data))
+            emit products(h)
+            h.dispose
+
+        end
+      end
+    end
+  end
+
+  def done?
+    return false if @process.alive?
+
+    receiveStream drain: true
+    return true
+  end
+
+  def msgAvailable?
+    @msg.received?
+  end
+
 end
 
 class Main < Qt::Widget
@@ -61,11 +134,13 @@ class Main < Qt::Widget
   slots 'filterActivated(QWidget *)', 'filterDeactivated(QWidget *)',
             'searchFor(const QString &)', 'supplierChanged(QObject *)',
 
+            'resultCount(int)', 'searchResultProducts(QObject *)',
+
             'progressBarMax(int)', 'queryProgress(int)'
 
-  signals 'search(QString *)',
-                'supplierChanged(QObject *)',
-                'productRightClick(QObject *)'
+  signals 'searchStarted(const QString &)', 'search(QString *)', 'searchCancelled()',
+               'supplierChanged(QObject *)',
+               'productRightClick(QObject *)'
 
   def initialize(parent=nil)
     super
@@ -73,6 +148,7 @@ class Main < Qt::Widget
     loadUi 'main'
 
     @queryProcess = nil
+    @payload = ''
 
     @productsData = []
     @activeFilters = []
@@ -89,9 +165,17 @@ class Main < Qt::Widget
     @productInfoGroup.hide
     @productInfo = findChild Qt::Label, 'productInfoL'
 
+    #
+    # Query progress
+
+    @cancelQueryPB = findChild Qt::PushButton, 'cancelQueryPB'
     @queryPB = findChild Qt::ProgressBar, 'queryPB'
     @progressWidgetHolder = findChild Qt::Widget, 'progressWidgetHolder'
     @progressWidgetHolder.hide
+    # @queryPB.hide
+
+    connect @cancelQueryPB, SIGNAL('clicked()') do cancelQuery end
+
 
     @tableEventFilter = TableEventFilter.new
     @productsT.setColumnWidth 0, 400
@@ -132,6 +216,32 @@ class Main < Qt::Widget
     end
   end
 
+  def timerEvent(e)
+    @queryProcess.receiveStream
+
+   if @queryProcess.done?
+      killTimer e.timerId
+    end
+  end
+
+  def resultCount(count)
+    @resultCount.setText "Result: #{count}"
+  end
+
+  def searchResultProducts(products)
+    @searchResultsFromCache = false
+
+    p = products.products
+    fillProducts p
+
+    @progressWidgetHolder.hide
+    @lastQuery = @searchFor.text
+    @searchFor.setEnabled true
+    @filter.setEnabled true
+
+    emit search(@searchFor.text)
+  end
+
   def filterActivated(filter)
     @activeFilters << filter
 
@@ -154,29 +264,55 @@ class Main < Qt::Widget
     query = search || @searchFor.text
     @searchFor.setText query
 
-    @queryProcess = ChildProcess.build(
-        Helpers.actualRubyExecutable, $0,
-        '-q', $supplier.id, search)
-    @queryProcess.extend QueryProcess
+    @searchResultsFromCache = false
+
+    emit searchStarted(query)
+
+    @queryProcess = QueryProcess.new $supplier.id, query
+    connect(
+        @queryProcess, SIGNAL('products(QObject *)'),
+        self, SLOT('searchResultProducts(QObject *)'))
+    connect(
+        @queryProcess, SIGNAL('numberOfProducts(int)'),
+        self, SLOT('progressBarMax(int)'))
+    connect @queryProcess, SIGNAL('productsFetched(int)') do |fetched|
+      @queryPB.setValue @queryPB.value+fetched
+    end
+
+    connect @queryProcess, SIGNAL('searchResultsFromCache()') do
+      @searchResultsFromCache = true
+    end
 
     @queryProcess.start
-    @queryProcess.w.close
-    payload = @queryProcess.r.read
+    @queryPB.setValue 0
+    @progressWidgetHolder.show
+    @searchFor.setEnabled false
+    @filter.setEnabled false
 
-    products = (Marshal.load(
-        CommMsgs::TransportMsg.
-            received(payload).toMsg.
-            products.data))
+    startTimer 700
+  end
 
-    @resultCount.setText "Result: #{products.size}"
+  def cancelQuery
+    @cancelQueryPB.setEnabled false
 
-    fillProducts products
+    begin
+      @queryProcess.process.stop
+      @queryProcess.process.wait
+    rescue ChildProcess::Error
+    end
 
-    emit search(@searchFor.text)
+    @progressWidgetHolder.hide
+    @cancelQueryPB.setEnabled true
+
+    emit searchCancelled()
   end
 
   def progressBarMax(max)
-    @queryPB.setMaximum max
+    if @searchResultsFromCache
+      @queryPB.setMaximum max
+    else
+      @queryPB.setMaximum max*2
+    end
   end
 
   def queryProgress(prog)
@@ -194,7 +330,7 @@ class Main < Qt::Widget
     clearProductsTable
 
     filteredProducts = []
-    $supplier.fetchCache($supplier.lastQuery).each do |p|
+    $supplier.fetchCache(@lastQuery).each do |p|
       ok = @activeFilters.reduce(true) {|m, f| m and f.eval p}
       filteredProducts << p if ok
     end

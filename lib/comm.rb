@@ -31,9 +31,18 @@ module CommMsgs
 
     def self.received(o)
       str = o.to_s
-      size = str[0,8].unpack('L')[0]
+      size = unpackMsgSize str
 
       self.new from64(str[8..-1])
+    end
+
+    def self.streamed
+      self.new
+    end
+
+    # Returns the size of an encoded message (excluding the size field).
+    def self.unpackMsgSize(rawData)
+      (from64 rawData[0,8]).unpack('L')[0]
     end
 
     def to_s
@@ -46,10 +55,59 @@ module CommMsgs
       Msg.decode @data
     end
 
+    def received(rawData)
+      return rawData if rawData.empty?
+      return rawData if received?
+
+      sizeOffset = 0
+
+      if @streamSize.nil?
+        # Message size can be decoded.
+        if rawData.size >= 8
+          @streamSize = self.class.unpackMsgSize rawData
+
+          return '' if rawData.size == 8
+
+          sizeOffset = 8
+        else
+          return rawData
+        end
+      end
+
+      @stream += rawData.slice(
+          sizeOffset,
+          (processed = [@streamSize-@stream.size, rawData.size-sizeOffset].min))
+
+      return rawData[sizeOffset+processed..-1]
+    end
+
+    def received?
+      return true unless @data.empty?
+
+      if !@streamSize.nil? and @stream.size == @streamSize
+        @data = from64 @stream
+        @streamSize, @stream = nil, ''
+
+        return true
+      end
+
+      return false
+    end
+
+    def clear
+      @streamSize, @stream = nil, ''
+      @data = ''
+    end
+
     private
-    def initialize(data)
-      if !data.is_a? String and data.respond_to? :encode
+    def initialize(data=nil)
+      # Streamed
+      if data.nil?
+        clear
+
+      elsif !data.is_a? String and data.respond_to? :encode
         @data = data.encode.to_s
+
       else
         @data = data.to_s
       end
@@ -60,59 +118,114 @@ module CommMsgs
   # Application messages, they are encoded / decoded when
   # they are sent / received by TransportMsg.
 
-  class SearchResultFromCache
-    ID = 1
-
+  class Base
     include Beefcake::Message
   end
 
-  class Products
-    ID = 2
+  class SearchResultsFromCache < Base
+    ID = 1
+  end
 
-    include Beefcake::Message
+  class Products < Base
+    ID = 2
 
     required :data, :bytes, 1
   end
 
-  class Msg
-    include Beefcake::Message
+  class NumberOfProducts < Base
+    ID = 3
 
+    required :count, :uint32, 1
+  end
+
+  class ProductsFetched < Base
+    ID = 4
+
+    required :count, :uint32, 1
+  end
+
+  class CommIssues < Base
+    ID = 5
+
+    required :issue, :bytes, 1
+  end
+
+  class Msg < Base
     required :type, :uint32, 1
 
     optional :products, Products, 2
+    optional :numberOfProducts, NumberOfProducts, 3
+    optional :productsFetched, ProductsFetched, 4
+    optional :commIssues, CommIssues, 5
   end
 end
 
 class QueryChildMsgs < Qt::Object
   include Base64Helpers
 
-  slots 'searchResultFromCache()',
-           'products(QObject *)'
+  slots 'searchResultsFromCache()',
+           'products(QObject *)',
+           'numberOfProducts(int)',
+           'productsFetched(int)',
+           'commIssues(const QString &)'
 
   def initialize
     super(nil)
   end
 
-  def searchResultFromCache
-    printMsg SearchResultFromCache.new
+  def searchResultsFromCache
+    printMsg CommMsgs::SearchResultsFromCache.new
   end
 
   def products(p)
     products = p.products
     printMsg(
-        CommMsgs::Products.new :data => Marshal.dump(products))
+        CommMsgs::Products.new data: Marshal.dump(products))
+  end
+
+  def numberOfProducts(count)
+    printMsg(
+        CommMsgs::NumberOfProducts.new count: count)
+  end
+
+  def productsFetched(count)
+    printMsg(
+        CommMsgs::ProductsFetched.new count: count)
+  end
+
+  def commIssues(issue)
+    printMsg(
+        CommMsgs::CommIssues.new issue: issue)
   end
 
   private
 
   def printMsg(msg)
     case msg.class::ID
+
       when CommMsgs::Products::ID
           wrapperMsg = CommMsgs::Msg.new(
               :type=> msg.class::ID,
               :products => msg)
+
+      when CommMsgs::NumberOfProducts::ID
+        wrapperMsg = CommMsgs::Msg.new(
+            :type => msg.class::ID,
+            :numberOfProducts => msg)
+
+      when CommMsgs::ProductsFetched::ID
+        wrapperMsg = CommMsgs::Msg.new(
+            :type => msg.class::ID,
+            :productsFetched => msg)
+
+      when CommMsgs::SearchResultsFromCache::ID
+        wrapperMsg = CommMsgs::Msg.new(
+            :type => msg.class::ID)
+
     end
 
     print CommMsgs::TransportMsg.toSend(wrapperMsg)
+    $stdout.flush
+    $stdout.fsync
   end
 end

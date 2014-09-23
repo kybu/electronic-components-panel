@@ -54,7 +54,10 @@ class Farnell < Qt::Object
   attr_reader :lastQuery, :cache, :id
   attr_accessor :apiKey
 
-  signals 'searchResultFromCache()', 'products(QObject *)'
+  signals 'searchResultsFromCache()', 'products(QObject *)',
+               'numberOfProducts(int)',
+               'communicationIssue(const QString &)',
+               'productsFetched(int)'
 
   def initialize(storeId = 'uk.farnell.com')
     super(nil)
@@ -84,7 +87,10 @@ class Farnell < Qt::Object
     @lastQuery = query
 
     products = []
-    unless (products=fetchCache(query))
+    if (products = fetchCache(query))
+      emit productsFetched(products.size)
+
+    else
       data = remoteCall 'any:'+query, 0, numberOfResults
 
       products, noAttributes = rawDataToProducts(data)
@@ -105,6 +111,35 @@ class Farnell < Qt::Object
     return products
   end
 
+  def resultCount(query)
+    if (t=fetchCache(query+'_resultCount'))
+      emit searchResultsFromCache()
+      emit numberOfProducts(t)
+
+      return t
+    end
+
+    data = remoteCall "any:#{query}", 0, 1 do |request|
+      request['resultsSettings.responseGroup'] = 'none'
+    end
+
+    n = data['keywordSearchReturn']['numberOfResults'].to_i
+    storeCache query+'_resultCount', n
+    emit numberOfProducts(n)
+
+    return n
+  end
+
+  def fetchCache(query)
+    if @cache.has_key?(query)
+      return @cache[query]
+    end
+
+    return false
+  end
+
+  private
+
   def remoteCall(query, offset, numberOfResults)
     ret = {}
     fetched = 0
@@ -117,46 +152,53 @@ class Farnell < Qt::Object
       # Retry
       while true
 
+        request = {
+            'callInfo.apiKey' => @apiKey,
+            'storeInfo.id' => @storeId,
+
+            'term' => query,
+
+            'resultsSettings.offset' => fetched,
+            'resultsSettings.numberOfResults' => toFetch,
+            'resultsSettings.responseGroup' => 'large',
+            'resultsSettings.refinements.filters' => 'inStock',
+
+            'callInfo.omitXmlSchema' => true,
+            'callInfo.responseDataFormat' => 'XML'}
+
+        yield request if block_given?
+
         data = HTTParty.get(
             'http://api.element14.com/catalog/products',
-
-            {query: {
-                'callInfo.apiKey' => @apiKey,
-                'storeInfo.id' => @storeId,
-
-                'term' => query,
-
-                'resultsSettings.offset' => fetched,
-                'resultsSettings.numberOfResults' => toFetch,
-                'resultsSettings.responseGroup' => 'large',
-                'resultsSettings.refinements.filters' => 'inStock',
-
-                'callInfo.omitXmlSchema' => true,
-
-                # I had a situation where XML did not return component attributes.
-                'callInfo.responseDataFormat' => 'XML'
-            }}).parsed_response
+            {query: request}).parsed_response
 
         # h1 => 'Gateway Timeout'
         if data.has_key? 'Fault' or data.has_key? 'h1'
-          pp data
+          prettified = ''
+          PP.pp data, prettified
+
+          emit communicationIssue(prettified)
 
           sleep 0.73
+
+          # When HTTP 503 happens ...
+        elsif data.is_a? String
+          pp data
+
         else
           fetched += toFetch
-
-          # s=''
-          # File.write(query, PP.pp(data, s))
 
           if ret.empty?
             ret.merge! data
           else
             if data.has_key? 'keywordSearchReturn' and
-               data['keywordSearchReturn'].has_key?('products')
+                data['keywordSearchReturn'].has_key?('products')
 
               ret['keywordSearchReturn']['products'] += data['keywordSearchReturn']['products']
             end
           end
+
+          emit productsFetched(toFetch)
 
           break
         end
@@ -165,58 +207,7 @@ class Farnell < Qt::Object
       end
     end
 
-    s=''
-    File.write("abc", PP.pp(ret, s))
     return ret
-  end
-
-  def resultCount(query)
-    if (t=fetchCache(query+'_resultCount'))
-      return t
-    end
-
-    3.times do
-      data = HTTParty.get(
-        'http://api.element14.com/catalog/products', 
-
-        {query: {
-          'callInfo.apiKey' => @apiKey,
-          'storeInfo.id' => @storeId,
-
-          'term' => "any:#{query}",
-
-          'resultsSettings.offset' => 0,
-          'resultsSettings.numberOfResults' => 1,
-          'resultsSettings.responseGroup' => 'none',
-          'resultsSettings.refinements.filters' => 'inStock',
-
-          'callInfo.omitXmlSchema' => true,
-          'callInfo.responseDataFormat' => 'XML'
-        }}).parsed_response
-
-      if data.is_a? Hash and (data.has_key? 'Fault' or data.has_key? 'h1')
-        pp data
-
-      # When HTTP 503 happens ...
-      elsif data.is_a? String
-        pp data
-
-      else
-        storeCache(query+'_resultCount', data['keywordSearchReturn']['numberOfResults'].to_i)
-
-        return data['keywordSearchReturn']['numberOfResults'].to_i
-      end
-
-      sleep 2
-    end
-  end
-
-  def fetchCache(query)
-    if @cache.has_key?(query)
-      return @cache[query]
-    end
-
-    return false
   end
 
   def storeCache(query, data)
@@ -225,7 +216,6 @@ class Farnell < Qt::Object
     File.binwrite "cache/#{@storeId}_#{query}", Marshal.dump(data)
   end
 
-  private
   def rawDataToProducts(data)
     products = []
 

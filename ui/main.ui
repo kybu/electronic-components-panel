@@ -182,7 +182,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Querying the supplier</string>
+         <string>Querying the supplier.It may take a while ...</string>
         </property>
        </widget>
       </item>
@@ -190,6 +190,12 @@
        <widget class="QProgressBar" name="queryPB">
         <property name="value">
          <number>24</number>
+        </property>
+        <property name="textVisible">
+         <bool>false</bool>
+        </property>
+        <property name="invertedAppearance">
+         <bool>false</bool>
         </property>
        </widget>
       </item>

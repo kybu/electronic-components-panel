@@ -21,7 +21,7 @@ Additional APIs will be added like http://octopart.com , https://developers.tme.
 # Technicalities
 Ruby 2.0.0+ and Qt were chosen for this application, main reason being the speed of development. The application is rough at the edges at the moment but that will get better.
 
-Theoretically, it is a multi-platform application. It should run wherever Ruby and Qt gem are supported.
+Works only on Windows at the moment.
 
 ## Install
 

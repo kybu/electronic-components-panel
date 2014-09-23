@@ -87,3 +87,27 @@ module Helpers
     rubyPath.read_string rubyPathSize
   end
 end
+
+# TODO: make it a mixin to the IO object
+module PipeHelpers
+  extend FFI::Library
+
+  ffi_lib :kernel32, :msvcrt
+
+  typedef :uintptr_t, :hmodule
+  typedef :ulong, :dword
+  typedef :uintptr_t, :handle
+
+  attach_function :PeekNamedPipe, [
+      :handle, :pointer, :dword, :pointer, :pointer, :pointer], :bool
+  attach_function :_get_osfhandle, [:dword], :dword
+
+  def self.availBytes(io)
+    handle = _get_osfhandle io.fileno
+    bytes = FFI::MemoryPointer.new :ulong
+
+    ok = PeekNamedPipe handle, nil, 0, nil, bytes, nil
+
+    return bytes.read_ulong
+  end
+end

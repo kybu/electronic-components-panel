@@ -40,4 +40,26 @@ class QueryChildMsgsTest < Test::Unit::TestCase
         CommMsgs::Msg.decode(
             from64 output[8..-1]).products.data)
   end
+
+  def test_numberOfProducts
+    msgs = QueryChildMsgs.new
+
+    origStdout = $stdout
+    begin
+      $stdout = StringIO.new
+      msgs.numberOfProducts 192
+
+    ensure
+      output = $stdout.string
+      $stdout = origStdout
+    end
+
+    msgSize = (from64(output[0,8]).unpack 'L')[0]
+    assert_equal output.size-8, msgSize
+
+    assert_equal(
+        192,
+        CommMsgs::Msg.decode(
+            from64 output[8..-1]).numberOfProducts.count)
+  end
 end

@@ -57,9 +57,18 @@ class Settings
         Qt::Variant.fromValue(settingsDialog.farnellShop))
   end
 
-  def self.loadSettings(settingsDialog)
-    settingsDialog.farnellShop = @settings.value(FARNELLSHOP_REG).toString
-    settingsDialog.farnellApiKey = @settings.value(FARNELLAPI_REG).toString
+  def self.loadSettings(settingsDialog = nil)
+    @farnellShop = @settings.value(FARNELLSHOP_REG).toString
+    @farnellApiKey = @settings.value(FARNELLAPI_REG).toString
+
+    if settingsDialog != nil
+      settingsDialog.farnellShop = @farnellShop
+      settingsDialog.farnellApiKey = @farnellApiKey
+    end
+  end
+
+  def self.farnellApiKey
+    @farnellApiKey
   end
 end
 

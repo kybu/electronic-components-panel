@@ -108,13 +108,16 @@ class Components < Qt::MainWindow
         @products, SLOT('searchFor(const QString &)'))
     connect @products, SIGNAL('searchStarted(const QString &)') do
       @searchCache.setEnabled false
+      @filters.setEnabled false
     end
     connect @products, SIGNAL('searchCancelled()') do
       @searchCache.setEnabled true
+      @filters.setEnabled true
     end
     connect @products, SIGNAL('search(QString *)') do
       @searchCache.setEnabled true
       @searchCache.refreshCache
+      @filters.setEnabled true
     end
 
     # Netlists

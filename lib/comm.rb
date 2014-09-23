@@ -222,6 +222,11 @@ class QueryChildMsgs < Qt::Object
         wrapperMsg = CommMsgs::Msg.new(
             :type => msg.class::ID)
 
+      when CommMsgs::CommIssues::ID
+        wrapperMsg = CommMsgs::Msg.new(
+            type: msg.class::ID,
+            commIssues: msg)
+
     end
 
     print CommMsgs::TransportMsg.toSend(wrapperMsg)

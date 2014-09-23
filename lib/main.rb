@@ -172,7 +172,6 @@ class Main < Qt::Widget
     @queryPB = findChild Qt::ProgressBar, 'queryPB'
     @progressWidgetHolder = findChild Qt::Widget, 'progressWidgetHolder'
     @progressWidgetHolder.hide
-    # @queryPB.hide
 
     connect @cancelQueryPB, SIGNAL('clicked()') do cancelQuery end
 
@@ -202,17 +201,6 @@ class Main < Qt::Widget
       @productInfo.setText attrText
 
       @productInfoGroup.show
-
-#      puts "http://uk.farnell.com/productimages/farnell/standard#{data['image']['baseName']}"
-#
-#      picData = HTTParty.get("http://uk.farnell.com/productimages/farnell/standard#{data['image']['baseName']}").parsed_response
-#
-#      picFile = '.'+data['image']['baseName']
-#      File.binwrite picFile, picData
-#
-#      pix = Qt::Pixmap.new picFile
-#
-#      @productImage.setPixmap pix
     end
   end
 
@@ -236,8 +224,10 @@ class Main < Qt::Widget
 
     @progressWidgetHolder.hide
     @lastQuery = @searchFor.text
-    @searchFor.setEnabled true
-    @filter.setEnabled true
+
+    searchRelatedWidgets :enable
+
+    $supplier.loadCache @lastQuery
 
     emit search(@searchFor.text)
   end
@@ -286,8 +276,7 @@ class Main < Qt::Widget
     @queryProcess.start
     @queryPB.setValue 0
     @progressWidgetHolder.show
-    @searchFor.setEnabled false
-    @filter.setEnabled false
+    searchRelatedWidgets :disable
 
     startTimer 700
   end
@@ -303,6 +292,7 @@ class Main < Qt::Widget
 
     @progressWidgetHolder.hide
     @cancelQueryPB.setEnabled true
+    searchRelatedWidgets :enable
 
     emit searchCancelled()
   end
@@ -325,6 +315,19 @@ class Main < Qt::Widget
   end
 
   private
+
+  def searchRelatedWidgets(action = :disable)
+    if action == :disable
+      @searchFor.setEnabled false
+      @filter.setEnabled false
+      @productsT.setEnabled false
+
+    else
+      @searchFor.setEnabled true
+      @filter.setEnabled true
+      @productsT.setEnabled true
+    end
+  end
 
   def applyFilters
     clearProductsTable

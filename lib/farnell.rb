@@ -68,12 +68,19 @@ class Farnell < Qt::Object
     loadCache
   end
 
-  def loadCache
+  def loadCache(query=nil)
     Dir.mkdir('cache') unless Dir.exist?('cache')
 
-    @cache = {}
-    Dir.glob("cache/#{@storeId}_*") do |f|
+    if query.nil?
+      @cache = {}
+      Dir.glob("cache/#{@storeId}_*") do |f|
+        @cache[File.basename(f)[@storeId.size+1..-1]] = Marshal.load(File.binread f)
+      end
+
+    else
+      f = "cache/#{@storeId}_#{query}"
       @cache[File.basename(f)[@storeId.size+1..-1]] = Marshal.load(File.binread f)
+
     end
   end
 

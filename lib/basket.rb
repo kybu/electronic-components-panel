@@ -189,6 +189,10 @@ class BasketItemGrid < Qt::Widget
   end
 
   def deleteItem(item, opts = nil)
+    if $qApp.focusWidget
+      $qApp.focusWidget.clearFocus
+    end
+
     @toDelete << item
 
     item.displayName.hide

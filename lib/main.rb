@@ -22,6 +22,7 @@ require 'Qt'
 require 'qtuitools'
 require 'httparty'
 require 'xmlsimple'
+require 'win32/process'
 require 'childprocess'
 
 class TableEventFilter < Qt::Object
@@ -154,7 +155,7 @@ class Main < Qt::Widget
     @activeFilters = []
 
     @searchFor = findChild Qt::LineEdit, 'searchInputL'
-    @filter = findChild Qt::LineEdit, 'filterL'
+    @textSearchL = findChild Qt::LineEdit, 'textSearchL'
 
     @productsT = findChild Qt::TableWidget, 'productsT'
     @resultCount = findChild Qt::Label, 'resultCountL'
@@ -187,7 +188,7 @@ class Main < Qt::Widget
     end
 
     connect @searchFor, SIGNAL('returnPressed()') do searchFor end
-    connect @filter, SIGNAL('returnPressed()') do filter end
+    connect @textSearchL, SIGNAL('returnPressed()') do textSearch end
 
     connect @productsT, SIGNAL('itemDoubleClicked(QTableWidgetItem *)') do |i|
       dataIndex = i.data(Qt::UserRole).toInt
@@ -250,10 +251,14 @@ class Main < Qt::Widget
     applyFilters
   end
 
-  def filter
-    data = $supplier.filter(@filter.text)
+  def textSearch
+    @activeFilters.delete_if {|f| f.kind_of? TextFilter}
 
-    fillProducts(data)
+    unless @textSearchL.text.empty?
+      filterActivated TextFilter.new @textSearchL.text
+    else
+      applyFilters
+    end
   end
 
   def searchFor(search=nil)
@@ -325,12 +330,12 @@ class Main < Qt::Widget
   def searchRelatedWidgets(action = :disable)
     if action == :disable
       @searchFor.setEnabled false
-      @filter.setEnabled false
+      @textSearchL.setEnabled false
       @productsT.setEnabled false
 
     else
       @searchFor.setEnabled true
-      @filter.setEnabled true
+      @textSearchL.setEnabled true
       @productsT.setEnabled true
     end
   end

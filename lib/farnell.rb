@@ -54,7 +54,7 @@ class Farnell < Qt::Object
   class Error < RuntimeError
   end
 
-  attr_reader :lastQuery, :cache, :id
+  attr_reader :cache, :id
   attr_accessor :apiKey, :retries, :retrySleep
 
   signals 'searchResultsFromCache()', 'products(QObject *)',
@@ -65,7 +65,6 @@ class Farnell < Qt::Object
   def initialize(storeId = 'uk.farnell.com')
     super(nil)
 
-    @lastQuery = nil
     @id = @storeId = storeId
 
     @retries = 3
@@ -90,15 +89,7 @@ class Farnell < Qt::Object
     end
   end
 
-  def filter(filterBy)
-    @cache[@lastQuery].select do |p|
-      p.to_s =~ /#{filterBy}/i
-    end
-  end
-
   def searchFor(query, numberOfResults = 10)
-    @lastQuery = query
-
     products = []
     if (products = fetchCache(query))
       emit productsFetched(products.size)

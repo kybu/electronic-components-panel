@@ -64,6 +64,16 @@ class Filter < Qt::Widget
   end
 end
 
+class TextFilter
+  def initialize(text)
+    @text = text
+  end
+
+  def eval(product)
+    product.to_s =~ /#{@text}/
+  end
+end
+
 class Filters < Qt::Widget
   include WidgetHelpers
 

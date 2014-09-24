@@ -17,6 +17,8 @@ GEM
     qtbindings-qt (4.8.6-x86-mingw32)
     test-unit (3.0.1)
       power_assert
+    win32-process (0.7.4)
+      ffi (>= 1.0.0)
     xml-simple (1.1.4)
 
 PLATFORMS
@@ -31,4 +33,5 @@ DEPENDENCIES
   qtbindings
   qtbindings-qt
   test-unit
+  win32-process
   xml-simple

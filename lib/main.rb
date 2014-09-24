@@ -164,6 +164,7 @@ class Main < Qt::Widget
     @productInfoGroup = findChild Qt::GroupBox, 'productInfoG'
     @productInfoGroup.hide
     @productInfo = findChild Qt::Label, 'productInfoL'
+    @productPic = findChild Qt::Label, 'productPictureL'
 
     #
     # Query progress
@@ -199,6 +200,11 @@ class Main < Qt::Widget
         attrText += "#{attr['attributeLabel']}: #{attr['attributeValue'][0..200]}\n"
       end
       @productInfo.setText attrText
+
+      resp = HTTParty.get(
+          "http://#{$supplier.id}/productimages/#{data['image']['vrntPath']}standard/#{data['image']['baseName']}")
+      (pix = Qt::Pixmap.new).loadFromData resp.body, resp.size
+      @productPic.setPixmap pix
 
       @productInfoGroup.show
     end

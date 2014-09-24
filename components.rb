@@ -161,6 +161,9 @@ class Components < Qt::MainWindow
   end
 end
 
+qtGemPath = Bundler.rubygems.find_name('qtbindings-qt')[0].full_gem_path
+app.add_library_path qtGemPath+'/qtbin/plugins'
+
 if ARGV.include? '-q'
   begin
     $stdin.close

@@ -196,7 +196,6 @@ class Farnell < Qt::Object
 
           if retries == @retries
             raise Error.new 'Retries!'
-
           end
 
           @retries += 1

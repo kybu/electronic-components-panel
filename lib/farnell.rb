@@ -51,8 +51,11 @@ class Product < Hash
 end
 
 class Farnell < Qt::Object
+  class Error < RuntimeError
+  end
+
   attr_reader :lastQuery, :cache, :id
-  attr_accessor :apiKey
+  attr_accessor :apiKey, :retries, :retrySleep
 
   signals 'searchResultsFromCache()', 'products(QObject *)',
                'numberOfProducts(int)',
@@ -64,6 +67,9 @@ class Farnell < Qt::Object
 
     @lastQuery = nil
     @id = @storeId = storeId
+
+    @retries = 3
+    @retrySleep = 0.73
 
     loadCache
   end
@@ -157,6 +163,7 @@ class Farnell < Qt::Object
       toFetch = 50 if toFetch > 50
 
       # Retry
+      retries = 0
       while true
 
         request = {
@@ -180,17 +187,20 @@ class Farnell < Qt::Object
             {query: request}).parsed_response
 
         # h1 => 'Gateway Timeout'
-        if data.has_key? 'Fault' or data.has_key? 'h1'
+        # data is a string when HTTP 503 happens
+        if data.has_key? 'Fault' or data.has_key? 'h1' or data.is_a? String
           prettified = ''
           PP.pp data, prettified
 
           emit communicationIssue(prettified)
 
-          sleep 0.73
+          if retries == @retries
+            raise Error.new 'Retries!'
 
-          # When HTTP 503 happens ...
-        elsif data.is_a? String
-          pp data
+          end
+
+          @retries += 1
+          sleep @retrySleep
 
         else
           fetched += toFetch

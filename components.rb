@@ -162,35 +162,41 @@ class Components < Qt::MainWindow
 end
 
 if ARGV.include? '-q'
-  $stdin.close
-  $supplier = Farnell.new ARGV[1]
+  begin
+    $stdin.close
+    $supplier = Farnell.new ARGV[1]
 
-  Settings.loadSettings
-  $supplier.apiKey = Settings.farnellApiKey
+    Settings.loadSettings
+    $supplier.apiKey = Settings.farnellApiKey
 
-  query = ARGV[2]
-  comm = QueryChildMsgs.new
+    query = ARGV[2]
+    comm = QueryChildMsgs.new
 
-  $qApp.connect(
-      $supplier, SIGNAL('products(QObject *)'),
-      comm, SLOT('products(QObject *)'))
-  $qApp.connect(
-      $supplier, SIGNAL('numberOfProducts(int)'),
-      comm, SLOT('numberOfProducts(int)'))
-  $qApp.connect(
-      $supplier, SIGNAL('productsFetched(int)'),
-      comm, SLOT('productsFetched(int)'))
-  $qApp.connect(
-      $supplier, SIGNAL('searchResultsFromCache()'),
-      comm, SLOT('searchResultsFromCache()'))
-  $qApp.connect(
-      $supplier, SIGNAL('communicationIssue(const QString &)'),
-      comm, SLOT('commIssues(const QString &)'))
+    $qApp.connect(
+        $supplier, SIGNAL('products(QObject *)'),
+        comm, SLOT('products(QObject *)'))
+    $qApp.connect(
+        $supplier, SIGNAL('numberOfProducts(int)'),
+        comm, SLOT('numberOfProducts(int)'))
+    $qApp.connect(
+        $supplier, SIGNAL('productsFetched(int)'),
+        comm, SLOT('productsFetched(int)'))
+    $qApp.connect(
+        $supplier, SIGNAL('searchResultsFromCache()'),
+        comm, SLOT('searchResultsFromCache()'))
+    $qApp.connect(
+        $supplier, SIGNAL('communicationIssue(const QString &)'),
+        comm, SLOT('commIssues(const QString &)'))
 
-  resultCount = $supplier.resultCount query
-  $supplier.searchFor query, resultCount
+    resultCount = $supplier.resultCount query
+    $supplier.searchFor query, resultCount
 
-  exit 0
+    exit 0
+
+  rescue Error => e
+    comm.commIssues e.to_s
+    exit 1
+  end
 
 else
   Components.new.show

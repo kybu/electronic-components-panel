@@ -423,14 +423,16 @@ class Main < Qt::Widget
       end
 
       if products.size != 0
-        @productsT.setCurrentCell 0, 0
         @productsT.sortItems 0
         @productsT.setSortingEnabled true
+        @productsT.setCurrentCell 0, 0
       end
 
     ensure
       @productsT.installEventFilter(@tableEventFilter)
       @productsT.blockSignals false
     end
+
+
   end
 end

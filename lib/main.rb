@@ -415,7 +415,7 @@ class Main < Qt::Widget
 
         @productsT.setItem row-1, 2, i2
 
-        i3 = Qt::TableWidgetItem.new (minQuant*price).to_s
+        i3 = Qt::TableWidgetItem.new("%0.2f" % (minQuant*price))
         i3.setData Qt::UserRole, qVariantFromValue(row-1)
         items << i3
 

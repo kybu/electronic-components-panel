@@ -37,7 +37,9 @@ class UiLogger < Qt::Object
 end
 
 Hatchet.configure do |config|
-  config.appenders << UiLogger.new do |appender|
-    appender.level :debug
+  config.level :debug
+
+  config.appenders << Hatchet::LoggerAppender.new do |a|
+    a.logger = Logger.new 'components.log'
   end
 end

@@ -246,7 +246,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QLabel" name="label_2">
+       <widget class="QLabel" name="queryMessageL">
         <property name="text">
          <string>Querying the supplier.It may take a while ...</string>
         </property>

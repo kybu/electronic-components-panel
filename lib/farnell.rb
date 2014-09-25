@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
 require_relative 'helpers'
+require_relative 'logging'
 
 require 'httparty'
 require 'xmlsimple'
@@ -51,12 +52,15 @@ class Product < Hash
 end
 
 class Farnell < Qt::Object
+  include Hatchet
+
   class Error < RuntimeError
   end
 
   attr_reader :cache, :id
   attr_accessor :apiKey, :ignoreReeled,
-                         :retries, :retrySleep
+                         :retries, :retrySleep,
+                         :attributesRetries, :attributesRetrySleep
 
   signals 'searchResultsFromCache()', 'products(QObject *)',
                'numberOfProducts(int)',
@@ -70,6 +74,9 @@ class Farnell < Qt::Object
 
     @retries = 3
     @retrySleep = 0.73
+
+    @attributesRetries = 3
+    @attributesRetrySleep = 3
 
     loadCache
   end
@@ -93,6 +100,8 @@ class Farnell < Qt::Object
   def searchFor(query, numberOfResults = 10)
     products = []
     if (products = fetchCache(query))
+      log.debug { "Fetched from cache: #{query}"}
+
       if @ignoreReeled
         products = products.select {|p| !isReeled p}
       end
@@ -102,12 +111,20 @@ class Farnell < Qt::Object
       data = remoteCall 'any:'+query, 0, numberOfResults
 
       products, noAttributes = rawDataToProducts(data)
+      log.debug {"Products with no attributes: #{noAttributes.size}"}
 
-      if noAttributes != 0
-        sku = products.map { |p| p['sku'] }
-        data = remoteCall "id: #{sku.join ' '}", 0, sku.size
+      if noAttributes.size != 0
+        log.debug {"Going to fetch attributes."}
 
-        products, noAttributes = rawDataToProducts(data)
+        products = products - noAttributes
+
+        sku = noAttributes.map { |p| p['sku'] }
+        data = remoteCall sku, 0, sku.size
+
+        products2, noAttributes2 = rawDataToProducts(data)
+        log.warn {"Products with no attributes: #{noAttributes2.size}"}
+
+        products.concat products2
       end
 
       storeCache query, products
@@ -121,6 +138,8 @@ class Farnell < Qt::Object
 
   def resultCount(query)
     if (t=fetchCache(query+'_resultCount'))
+      log.debug { "Fetched from cache: #{query}_resultCount"}
+
       emit searchResultsFromCache()
       emit numberOfProducts(t)
 
@@ -132,6 +151,7 @@ class Farnell < Qt::Object
     end
 
     n = data['keywordSearchReturn']['numberOfResults'].to_i
+    log.debug {"Number of results: #{n}"}
     storeCache query+'_resultCount', n
     emit numberOfProducts(n)
 
@@ -157,15 +177,22 @@ class Farnell < Qt::Object
       toFetch = numberOfResults - fetched
       toFetch = 50 if toFetch > 50
 
-      # Retry
       retries = 0
+      attributesRetries = 0
+      # Retry
       while true
+        log.debug { "Offset / ToFetch / Retries: #{fetched} #{toFetch} #{retries}" }
+
+        term = query.kind_of?(Array) ?
+                                  "id:#{query[fetched, toFetch].join ' '}"
+                              :
+                                  query.to_s
 
         request = {
             'callInfo.apiKey' => @apiKey,
             'storeInfo.id' => @storeId,
 
-            'term' => query,
+            'term' => term,
 
             'resultsSettings.offset' => fetched,
             'resultsSettings.numberOfResults' => toFetch,
@@ -187,25 +214,52 @@ class Farnell < Qt::Object
           prettified = ''
           PP.pp data, prettified
 
+          log.warn { "Communication issues: #{prettified}"}
+
           emit communicationIssue(prettified)
 
           if retries == @retries
             raise Error.new 'Retries!'
           end
 
-          @retries += 1
+          retries += 1
           sleep @retrySleep
 
         else
+
+          if request['resultsSettings.responseGroup'] != 'none'
+            log.debug {"Products with no attributes: #{noAttributesCount data}"}
+
+            if query.kind_of?(Array) and noAttributesCount(data) != 0
+              if attributesRetries == @attributesRetries
+                raise Error.new 'Attribute retries!'
+              end
+              attributesRetries += 1
+
+              log.debug {"Going to retry to get all attributes."}
+
+              sleep @attributesRetries
+              next
+            end
+          end
+
           fetched += toFetch
 
           if ret.empty?
             ret.merge! data
           else
             if data.has_key? 'keywordSearchReturn' and
-                data['keywordSearchReturn'].has_key?('products')
+               data['keywordSearchReturn'].has_key?('products')
 
               ret['keywordSearchReturn']['products'] += data['keywordSearchReturn']['products']
+
+            elsif data.has_key? 'premierFarnellPartNumberReturn' and
+                    data['premierFarnellPartNumberReturn'].has_key?('products')
+
+              ret['premierFarnellPartNumberReturn']['products'] += data['premierFarnellPartNumberReturn']['products']
+
+            else
+              log.warn { "Returned search did not contain expected structure!" }
             end
           end
 
@@ -214,7 +268,7 @@ class Farnell < Qt::Object
           break
         end
 
-        sleep 0.73
+        sleep 1.73
       end
     end
 
@@ -227,6 +281,22 @@ class Farnell < Qt::Object
     File.binwrite "cache/#{@storeId}_#{query}", Marshal.dump(data)
   end
 
+  def noAttributesCount(data)
+    dataReturnKey = nil
+    dataReturnKey = 'keywordSearchReturn' if data.has_key?('keywordSearchReturn')
+    dataReturnKey = 'premierFarnellPartNumberReturn' if data.has_key?('premierFarnellPartNumberReturn')
+
+    if dataReturnKey
+      noAttributes = 0
+      data[dataReturnKey]['products'].each do |p|
+        noAttributes += 1 unless p.has_key? 'attributes'
+      end
+
+      return noAttributes
+    end
+
+  end
+
   def rawDataToProducts(data)
     products = []
 
@@ -235,20 +305,26 @@ class Farnell < Qt::Object
     dataReturnKey = 'premierFarnellPartNumberReturn' if data.has_key?('premierFarnellPartNumberReturn')
 
     if dataReturnKey
-      noAttributes = 0
+      noAttributes = []
       data[dataReturnKey]['products'].each do |p|
         # JSON
         #next if p.has_key?('reeling') and p['reeling']
         # XML
         #next if p.has_key?('reeling') and p['reeling'].strip == 'true'
 
+        next if @ignoreReeled and isReeled(p)
+
         unless p.has_key? 'attributes'
-          noAttributes += 1
           p['attributes'] = []
+          noAttributes << p
         end
 
-        next if @ignoreReeled and isReeled(p)
         products << Product.new(p)
+      end
+
+      if @ignoreReeled
+        ignored = data[dataReturnKey]['products'].size-products.size
+        log.debug {"Ignoring #{ignored} reeled products."} if ignored != 0
       end
 
       return products, noAttributes

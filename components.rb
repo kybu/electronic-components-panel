@@ -33,6 +33,8 @@ app = Qt::Application.new(ARGV)
 $supplier = nil
 
 class Components < Qt::MainWindow
+  include Hatchet
+
   def initialize(parent=nil)
     super
 

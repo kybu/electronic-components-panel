@@ -55,7 +55,8 @@ class Farnell < Qt::Object
   end
 
   attr_reader :cache, :id
-  attr_accessor :apiKey, :retries, :retrySleep
+  attr_accessor :apiKey, :ignoreReeled,
+                         :retries, :retrySleep
 
   signals 'searchResultsFromCache()', 'products(QObject *)',
                'numberOfProducts(int)',
@@ -92,6 +93,9 @@ class Farnell < Qt::Object
   def searchFor(query, numberOfResults = 10)
     products = []
     if (products = fetchCache(query))
+      if @ignoreReeled
+        products = products.select {|p| !isReeled p}
+      end
       emit productsFetched(products.size)
 
     else
@@ -179,7 +183,7 @@ class Farnell < Qt::Object
 
         # h1 => 'Gateway Timeout'
         # data is a string when HTTP 503 happens
-        if data.has_key? 'Fault' or data.has_key? 'h1' or data.is_a? String
+        if data.is_a? String or data.has_key? 'Fault' or data.has_key? 'h1'
           prettified = ''
           PP.pp data, prettified
 
@@ -243,10 +247,15 @@ class Farnell < Qt::Object
           p['attributes'] = []
         end
 
+        next if @ignoreReeled and isReeled(p)
         products << Product.new(p)
       end
 
       return products, noAttributes
     end
+  end
+
+  def isReeled(product)
+    product.has_key? 'reeling' and product['reeling'] != 'false'
   end
 end

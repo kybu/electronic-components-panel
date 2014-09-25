@@ -54,6 +54,9 @@ class Components < Qt::MainWindow
     connect @settings, SIGNAL('farnellApiKeyChanged(const QString &)') do |apiKey|
       $supplier.apiKey = apiKey
     end
+    connect @settings, SIGNAL('ignoreReeledProductsChanged(bool)') do |ignoreReeled|
+      $supplier.ignoreReeled = ignoreReeled
+    end
 
     # Basket
     addDock(
@@ -171,6 +174,7 @@ if ARGV.include? '-q'
 
     Settings.loadSettings
     $supplier.apiKey = Settings.farnellApiKey
+    $supplier.ignoreReeled = Settings.ignoreReeledProducts
 
     query = ARGV[2]
     comm = QueryChildMsgs.new
@@ -196,7 +200,7 @@ if ARGV.include? '-q'
 
     exit 0
 
-  rescue Error => e
+  rescue Farnell::Error => e
     comm.commIssues e.to_s
     exit 1
   end

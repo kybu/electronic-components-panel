@@ -30,6 +30,7 @@ class Settings
   MAINWINDOW_GEOMETRY_REG = 'mainWindowGeometry'
   FARNELLAPI_REG = 'farnellApiKey'
   FARNELLSHOP_REG = 'farnellShop'
+  IGNOREREELED_REG = 'ignoreReeled'
   BASKET_REG = 'basket'
 
   def self.deleteAll
@@ -63,6 +64,9 @@ class Settings
     @settings.setValue(
         FARNELLSHOP_REG,
         Qt::Variant.fromValue(settingsDialog.farnellShop))
+    @settings.setValue(
+        IGNOREREELED_REG,
+        Qt::Variant.fromValue(settingsDialog.ignoreReeledProducts))
 
     @settings.sync
   end
@@ -70,10 +74,12 @@ class Settings
   def self.loadSettings(settingsDialog = nil)
     @farnellShop = @settings.value(FARNELLSHOP_REG).toString
     @farnellApiKey = @settings.value(FARNELLAPI_REG).toString
+    @ignoreReeled = @settings.value(IGNOREREELED_REG).toBool
 
     if settingsDialog != nil
       settingsDialog.farnellShop = @farnellShop
       settingsDialog.farnellApiKey = @farnellApiKey
+      settingsDialog.ignoreReeledProducts = @ignoreReeled
     end
   end
 
@@ -111,12 +117,17 @@ class Settings
   def self.farnellApiKey
     @farnellApiKey
   end
+
+  def self.ignoreReeledProducts
+    @ignoreReeled
+  end
 end
 
 class SettingsDialog < Qt::Dialog
   include WidgetHelpers
 
   signals 'farnellApiKeyChanged(const QString &)',
+               'ignoreReeledProductsChanged(bool)',
                 'supplierChanged(QObject *)'
 
   def initialize(parent=nil)
@@ -176,6 +187,7 @@ kr.element14.com}
 
     @farnellApiKeyLE = findChild Qt::LineEdit, 'farnellApiKeyLE'
     @farnellShopsCB = findChild Qt::ComboBox, 'farnellShopsCB'
+    @ignoreReeledCB = findChild Qt::CheckBox, 'ignoreReeledCB'
     @buttonBox = findChild Qt::DialogButtonBox, 'buttonBox'
 
     @farnellShops.each {|s| @farnellShopsCB.addItem s}
@@ -209,11 +221,22 @@ kr.element14.com}
     newFarnellSupplier value
   end
 
+  def ignoreReeledProducts
+    return @ignoreReeledCB.checkState == Qt::Checked
+  end
+
+  def ignoreReeledProducts=(value)
+    @ignoreReeledCB.setCheckState(
+        value ? Qt::Checked : Qt::Unchecked)
+  end
+
   def accept
     save
 
     newFarnellSupplier @farnellShopsCB.currentText
     emit farnellApiKeyChanged @farnellApiKeyLE.text
+    emit ignoreReeledProductsChanged(
+        @ignoreReeledCB.checkState == Qt::Checked)
 
     super
   end

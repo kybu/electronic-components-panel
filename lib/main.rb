@@ -104,6 +104,9 @@ class QueryProcess < Qt::Object
           when CommMsgs::SearchResultsFromCache::ID
             emit searchResultsFromCache()
 
+          when CommMsgs::CommIssues::ID
+            puts msg.commIssues.issue
+
           when CommMsgs::Products::ID
             h = ProductsHolder.new(
                 Marshal.load(msg.products.data))
@@ -166,6 +169,7 @@ class Main < Qt::Widget
     @productInfoGroup.hide
     @productInfo = findChild Qt::Label, 'productInfoL'
     @productPic = findChild Qt::Label, 'productPictureL'
+    @productInfoLO = findChild Qt::HBoxLayout, 'productInfoLO'
 
     #
     # Query progress
@@ -202,12 +206,15 @@ class Main < Qt::Widget
       end
       @productInfo.setText attrText
 
+
       resp = HTTParty.get(
           "http://#{$supplier.id}/productimages/#{data['image']['vrntPath']}standard/#{data['image']['baseName']}")
       (pix = Qt::Pixmap.new).loadFromData resp.body, resp.size
       @productPic.setPixmap pix
 
       @productInfoGroup.show
+      @productInfoLO.update
+
     end
   end
 

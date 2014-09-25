@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>246</width>
-    <height>132</height>
+    <width>277</width>
+    <height>155</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -53,6 +53,16 @@
          <widget class="QLineEdit" name="farnellApiKeyLE"/>
         </item>
        </layout>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="ignoreReeledCB">
+        <property name="text">
+         <string>Ignore reeled products</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>

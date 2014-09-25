@@ -237,6 +237,7 @@ class Main < Qt::Widget
     fillProducts p
 
     @progressWidgetHolder.hide
+    @productInfoGroup.hide
     @lastQuery = @searchFor.text
 
     searchRelatedWidgets :enable

@@ -200,7 +200,7 @@ class Main < Qt::Widget
       data = @productsData[dataIndex]
       pp data
 
-      attrText = ''
+      attrText = data['displayName']+"\n\n"
       data['attributes'].each do |attr|
         attrText += "#{attr['attributeLabel']}: #{attr['attributeValue'][0..200]}\n"
       end

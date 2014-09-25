@@ -119,6 +119,9 @@
       <number>8</number>
      </property>
      <widget class="QTableWidget" name="productsT">
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
       <property name="selectionBehavior">
        <enum>QAbstractItemView::SelectRows</enum>
       </property>

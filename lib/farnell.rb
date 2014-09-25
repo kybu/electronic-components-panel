@@ -306,13 +306,27 @@ class Farnell < Qt::Object
 
     if dataReturnKey
       noAttributes = []
+      ignoredNoUK = ignoredReeled = 0
+
       data[dataReturnKey]['products'].each do |p|
         # JSON
         #next if p.has_key?('reeling') and p['reeling']
         # XML
         #next if p.has_key?('reeling') and p['reeling'].strip == 'true'
 
-        next if @ignoreReeled and isReeled(p)
+        if @ignoreReeled and isReeled(p)
+          ignoredReeled += 1
+          next
+        end
+
+        if p.has_key? 'stock' and p['stock'].has_key? 'regionalBreakdown'
+          p['stock']['regionalBreakdown'].each do |r|
+            if r['warehouse'] == 'UK' and r['level'].to_i <= 0
+              ignoredNoUK += 1
+              next
+            end
+          end
+        end
 
         unless p.has_key? 'attributes'
           p['attributes'] = []
@@ -323,8 +337,13 @@ class Farnell < Qt::Object
       end
 
       if @ignoreReeled
-        ignored = data[dataReturnKey]['products'].size-products.size
-        log.debug {"Ignoring #{ignored} reeled products."} if ignored != 0
+        if ignoredReeled != 0
+          log.debug {"Ignoring #{ignoredReeled} reeled products."}
+        end
+      end
+
+      if ignoredNoUK != 0
+        log.debug {"Ignoring #{ignoredNoUK} non-UK stock products"}
       end
 
       return products, noAttributes

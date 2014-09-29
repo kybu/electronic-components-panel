@@ -51,6 +51,14 @@ class Product < Hash
   end
 end
 
+# Farnell API is tempermental.
+#
+# It seems that JSON response format does not return product attributes when
+# searching by keywords. XML response format behaves better.
+#
+# XML response format has a minor issue. If there is only one result, instead of
+# an array with just one product hash element, the hash is returned. That breaks
+# array loops. Such results have to be converted to one element arrays.
 class Farnell < Qt::Object
   include Hatchet
 
@@ -122,7 +130,10 @@ class Farnell < Qt::Object
         data = remoteCall sku, 0, sku.size
 
         products2, noAttributes2 = rawDataToProducts(data)
-        log.warn {"Products with no attributes: #{noAttributes2.size}"}
+
+        if noAttributes2.size != 0
+          log.warn {"Products with no attributes: #{noAttributes2.size}"}
+        end
 
         products.concat products2
       end
@@ -226,6 +237,17 @@ class Farnell < Qt::Object
           sleep @retrySleep
 
         else
+          dataReturnKey = nil
+          dataReturnKey = 'keywordSearchReturn' if data.has_key?('keywordSearchReturn')
+          dataReturnKey = 'premierFarnellPartNumberReturn' if data.has_key?('premierFarnellPartNumberReturn')
+
+          # When only one products is found, 'products' is not an array with one element
+          # but a product info hash. it only happens with XML format.
+          if data[dataReturnKey].has_key? 'products' and
+             data[dataReturnKey]['products'].kind_of? Hash
+
+            data[dataReturnKey]['products'] = [data[dataReturnKey]['products']]
+          end
 
           if request['resultsSettings.responseGroup'] != 'none'
             log.debug {"Products with no attributes: #{noAttributesCount data}"}
@@ -320,12 +342,16 @@ class Farnell < Qt::Object
         end
 
         if p.has_key? 'stock' and p['stock'].has_key? 'regionalBreakdown'
-          p['stock']['regionalBreakdown'].each do |r|
-            if r['warehouse'] == 'UK' and r['level'].to_i <= 0
-              ignoredNoUK += 1
-              next
-            end
+
+          notUk = p['stock']['regionalBreakdown'].detect do |r|
+            r['warehouse'] == 'UK' and r['level'].to_i <= 0
           end
+
+          if notUk
+            ignoredNoUK += 1
+            next
+          end
+
         end
 
         unless p.has_key? 'attributes'
@@ -351,6 +377,16 @@ class Farnell < Qt::Object
   end
 
   def isReeled(product)
-    product.has_key? 'reeling' and product['reeling'] != 'false'
+    # XML
+    if product.has_key? 'reeling' and product['reeling'] != 'false' or
+      product['displayName'] =~ /,\s+reel$/i
+
+      return true
+    end
+
+    # JSON
+    # product.has_key? 'reeling' and product['reeling']
+
+    return false
   end
 end

@@ -70,7 +70,7 @@ class TextFilter
   end
 
   def eval(product)
-    product.to_s =~ /#{@text}/
+    product.to_s =~ /#{@text}/i
   end
 end
 

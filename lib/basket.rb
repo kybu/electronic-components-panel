@@ -80,9 +80,14 @@ class BasketItemGrid < Qt::Widget
   end
 
   def deleteAll
+    setUpdatesEnabled false
+
     while (i=@items.pop)
       deleteItem i, :noSignals
     end
+
+  ensure
+    setUpdatesEnabled true
   end
 
   def addItem(product)
@@ -220,7 +225,7 @@ class Basket < Qt::Widget
   slots   'add(QObject *)'
 
   QUICK_PASTE_LINK = '<a href="quickPaste://">Quick paste</a>'
-  SHOW_BASKET_LINK = '<a href="showBasket://">Show basket</a>'
+  SHOW_BASKET_LINK = '<a href="closeQuickPaste://">Close quick paste</a>'
 
   def initialize
     super

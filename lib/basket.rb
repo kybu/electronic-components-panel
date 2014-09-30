@@ -36,6 +36,8 @@ class BasketInfo < Qt::Widget
     connect @showBasketL, SIGNAL('linkActivated(const QString &)') do
       emit showCompleteBasket()
     end
+
+    basketUpdated
   end
 
   def basketUpdated
@@ -310,6 +312,8 @@ class Basket < Qt::Widget
       updateBasketInfo
       emit basketUpdated()
     end
+
+    updateBasketInfo
   end
 
   def add(product_)

@@ -17,7 +17,6 @@ require_relative 'helpers'
 require_relative 'logging'
 
 require 'httparty'
-require 'xmlsimple'
 require 'pp'
 
 class Product < Hash
@@ -180,6 +179,7 @@ class Farnell < Qt::Object
   private
 
   def remoteCall(query, offset, numberOfResults)
+    log.debug {"Shop id: #{@storeId}"}
     ret = {}
     fetched = 0
     numberOfResults = numberOfResults.to_i

@@ -4,7 +4,6 @@ source "https://rubygems.org"
 gem "qtbindings"
 gem "qtbindings-qt"
 gem "httparty"
-gem "xml-simple"
 gem "hatchet"
 gem 'win32-process'
 gem 'childprocess'

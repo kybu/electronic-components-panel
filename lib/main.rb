@@ -21,7 +21,6 @@ require_relative 'comm'
 require 'Qt'
 require 'qtuitools'
 require 'httparty'
-require 'xmlsimple'
 require 'win32/process'
 require 'childprocess'
 

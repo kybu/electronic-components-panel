@@ -129,7 +129,10 @@ class Components < Qt::MainWindow
     addDock(
         @netlists = Netlists.new,
         'Netlists', 'netlists',
-        Qt::BottomDockWidgetArea)
+        Qt::BottomDockWidgetArea) do |dock, toggle|
+
+      dock.hide
+    end
 
     connect $qApp, SIGNAL('lastWindowClosed()') do gone end
 
@@ -177,6 +180,7 @@ if ARGV.include? '-q'
     Settings.loadSettings
     $supplier.apiKey = Settings.farnellApiKey
     $supplier.ignoreReeled = Settings.ignoreReeledProducts
+    $supplier.ignoreNonUK = Settings.ignoreNonUKStock
 
     query = ARGV[2]
     comm = QueryChildMsgs.new

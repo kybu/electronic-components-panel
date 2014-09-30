@@ -40,6 +40,6 @@ Hatchet.configure do |config|
   config.level :debug
 
   config.appenders << Hatchet::LoggerAppender.new do |a|
-    a.logger = Logger.new 'components.log'
+    a.logger = Logger.new 'components.log', 1
   end
 end

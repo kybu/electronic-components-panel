@@ -65,9 +65,9 @@ class Farnell < Qt::Object
   end
 
   attr_reader :cache, :id
-  attr_accessor :apiKey, :ignoreReeled,
-                         :retries, :retrySleep,
-                         :attributesRetries, :attributesRetrySleep
+  attr_accessor :apiKey, :ignoreReeled, :ignoreNonUK,
+                       :retries, :retrySleep,
+                       :attributesRetries, :attributesRetrySleep
 
   signals 'searchResultsFromCache()', 'products(QObject *)',
                'numberOfProducts(int)',
@@ -341,7 +341,7 @@ class Farnell < Qt::Object
           next
         end
 
-        if p.has_key? 'stock' and p['stock'].has_key? 'regionalBreakdown'
+        if @ignoreNonUK and p.has_key? 'stock' and p['stock'].has_key? 'regionalBreakdown'
 
           notUk = p['stock']['regionalBreakdown'].detect do |r|
             r['warehouse'] == 'UK' and r['level'].to_i <= 0

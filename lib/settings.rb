@@ -31,6 +31,7 @@ class Settings
   FARNELLAPI_REG = 'farnellApiKey'
   FARNELLSHOP_REG = 'farnellShop'
   IGNOREREELED_REG = 'ignoreReeled'
+  IGNORENONUK_REG = 'ignoreNonUK'
   BASKET_REG = 'basket'
 
   def self.deleteAll
@@ -67,6 +68,9 @@ class Settings
     @settings.setValue(
         IGNOREREELED_REG,
         Qt::Variant.fromValue(settingsDialog.ignoreReeledProducts))
+    @settings.setValue(
+        IGNORENONUK_REG,
+        Qt::Variant.fromValue(settingsDialog.ignoreNonUKStock))
 
     @settings.sync
   end
@@ -75,11 +79,13 @@ class Settings
     @farnellShop = @settings.value(FARNELLSHOP_REG).toString
     @farnellApiKey = @settings.value(FARNELLAPI_REG).toString
     @ignoreReeled = @settings.value(IGNOREREELED_REG).toBool
+    @ignoreNonUK = @settings.value(IGNORENONUK_REG).toBool
 
     if settingsDialog != nil
       settingsDialog.farnellShop = @farnellShop
       settingsDialog.farnellApiKey = @farnellApiKey
       settingsDialog.ignoreReeledProducts = @ignoreReeled
+      settingsDialog.ignoreNonUKStock = @ignoreNonUK
     end
   end
 
@@ -121,14 +127,19 @@ class Settings
   def self.ignoreReeledProducts
     @ignoreReeled
   end
+
+  def self.ignoreNonUKStock
+    @ignoreNonUK
+  end
 end
 
 class SettingsDialog < Qt::Dialog
   include WidgetHelpers
 
   signals 'farnellApiKeyChanged(const QString &)',
-               'ignoreReeledProductsChanged(bool)',
-                'supplierChanged(QObject *)'
+             'ignoreReeledProductsChanged(bool)',
+             'supplierChanged(QObject *)',
+             'ignoreNonUKStockChanged(bool)'
 
   def initialize(parent=nil)
     super
@@ -188,6 +199,7 @@ kr.element14.com}
     @farnellApiKeyLE = findChild Qt::LineEdit, 'farnellApiKeyLE'
     @farnellShopsCB = findChild Qt::ComboBox, 'farnellShopsCB'
     @ignoreReeledCB = findChild Qt::CheckBox, 'ignoreReeledCB'
+    @ignoreNonUKCB = findChild Qt::CheckBox, 'ignoreNonUKCB'
     @buttonBox = findChild Qt::DialogButtonBox, 'buttonBox'
 
     @farnellShops.each {|s| @farnellShopsCB.addItem s}
@@ -230,6 +242,15 @@ kr.element14.com}
         value ? Qt::Checked : Qt::Unchecked)
   end
 
+  def ignoreNonUKStock
+    return @ignoreNonUKCB.checkState == Qt::Checked
+  end
+
+  def ignoreNonUKStock=(value)
+    @ignoreNonUKCB.setCheckState(
+        value ? Qt::Checked : Qt::Unchecked)
+  end
+
   def accept
     save
 
@@ -237,6 +258,8 @@ kr.element14.com}
     emit farnellApiKeyChanged @farnellApiKeyLE.text
     emit ignoreReeledProductsChanged(
         @ignoreReeledCB.checkState == Qt::Checked)
+    emit ignoreNonUKStockChanged(
+             @ignoreNonUKCB.checkState == Qt::Checked)
 
     super
   end

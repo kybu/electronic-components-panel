@@ -15,6 +15,7 @@
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
 Dir.chdir File.dirname(__FILE__)
 
+require 'bundler'
 require 'Qt'
 require 'pp'
 require 'base64'

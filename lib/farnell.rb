@@ -346,6 +346,9 @@ class Farnell < Qt::Object
         end
 
         if @ignoreNonUK and p.has_key? 'stock' and p['stock'].has_key? 'regionalBreakdown'
+          if p['stock']['regionalBreakdown'].kind_of? Hash
+            p['stock']['regionalBreakdown'] = [p['stock']['regionalBreakdown']]
+          end
 
           notUk = p['stock']['regionalBreakdown'].detect do |r|
             r['warehouse'] == 'UK' and r['level'].to_i <= 0

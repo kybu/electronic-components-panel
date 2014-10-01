@@ -114,11 +114,11 @@ module Helpers
         tokenHandleP.read_long,
         buffer, bytes)
 
-    return buffer.read_string
+    return (buffer.read_string).gsub '\\', '/'
   end
 
   def self.appData
-    (userProfileDir+'/AppData/Roaming').gsub '\\', '/'
+    userProfileDir+'/AppData/Roaming'
   end
 end
 

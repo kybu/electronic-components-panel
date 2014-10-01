@@ -24,6 +24,7 @@ require 'httparty'
 require 'win32/process'
 require 'childprocess'
 
+
 class TableEventFilter < Qt::Object
   signals 'productRightClick(int)' # productsData index
 

@@ -25,6 +25,7 @@ PLATFORMS
 
 DEPENDENCIES
   beefcake
+  bundler
   childprocess
   ffi
   hatchet

@@ -62,7 +62,8 @@ class QueryProcess < Qt::Object
     @receivedBytes = 0
 
     @process = ChildProcess.build(
-        Helpers.actualRubyExecutable, $0,
+        Helpers.actualRubyExecutable,
+        File.dirname(__FILE__).gsub('\\', '/')+'/../components.rb',
         '-q', storeId, query)
 
     @r, @w = IO.pipe

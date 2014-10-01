@@ -74,6 +74,7 @@ module Helpers
 
   typedef :uintptr_t, :hmodule
   typedef :ulong, :dword
+  typedef :uintptr_t, :handle
 
   attach_function :GetModuleHandle, :GetModuleHandleA, [:string], :hmodule
   attach_function :GetModuleFileName, :GetModuleFileNameA, [:hmodule, :pointer, :dword], :dword
@@ -85,6 +86,39 @@ module Helpers
     rubyPathSize = GetModuleFileName processHandle, rubyPath, 999
 
     rubyPath.read_string rubyPathSize
+  end
+
+  attach_function :GetCurrentProcess, [], :handle
+
+  ffi_lib :Userenv
+  attach_function :GetUserProfileDirectory, :GetUserProfileDirectoryA, [
+                         :handle, :pointer, :pointer], :bool
+
+  ffi_lib :Advapi32
+  attach_function :OpenProcessToken, [:handle, :dword, :pointer], :bool
+  TOKEN_READ = 131080
+
+  # TODO Proper buffer handling
+  def self.userProfileDir
+    # return ENV['USERPROFILE'] if ENV.has_key? 'USERPROFILE'
+
+    processHandle = GetCurrentProcess()
+    tokenHandleP = FFI::MemoryPointer.new :uintptr_t
+    OpenProcessToken(processHandle, TOKEN_READ, tokenHandleP)
+
+    bytes = FFI::MemoryPointer.new :ulong
+    buffer = FFI::MemoryPointer.new 1000
+    bytes.write_long 1000
+
+    GetUserProfileDirectory(
+        tokenHandleP.read_long,
+        buffer, bytes)
+
+    return buffer.read_string
+  end
+
+  def self.appData
+    (userProfileDir+'/AppData/Roaming').gsub '\\', '/'
   end
 end
 

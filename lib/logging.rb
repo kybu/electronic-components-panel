@@ -13,6 +13,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
+require_relative 'globals'
+
 require 'hatchet'
 
 $uiLogger = nil
@@ -40,6 +42,6 @@ Hatchet.configure do |config|
   config.level :debug
 
   config.appenders << Hatchet::LoggerAppender.new do |a|
-    a.logger = Logger.new 'components.log', 1
+    a.logger = Logger.new "#{APPDATA}/components.log", 1
   end
 end

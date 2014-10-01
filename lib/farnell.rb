@@ -15,9 +15,11 @@
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
 require_relative 'helpers'
 require_relative 'logging'
+require_relative 'globals'
 
 require 'httparty'
 require 'pp'
+require 'fileutils'
 
 class Product < Hash
   attr_reader :attributes,
@@ -74,6 +76,8 @@ class Farnell < Qt::Object
                'communicationIssue(const QString &)',
                'productsFetched(int)'
 
+  CACHEDIR = APPDATA+'/cache'
+
   def initialize(storeId = 'uk.farnell.com')
     super(nil)
 
@@ -89,16 +93,16 @@ class Farnell < Qt::Object
   end
 
   def loadCache(query=nil)
-    Dir.mkdir('cache') unless Dir.exist?('cache')
+    FileUtils.mkdir_p(CACHEDIR) unless Dir.exist?(CACHEDIR)
 
     if query.nil?
       @cache = {}
-      Dir.glob("cache/#{@storeId}_*") do |f|
+      Dir.glob("#{CACHEDIR}/#{@storeId}_*") do |f|
         @cache[File.basename(f)[@storeId.size+1..-1]] = Marshal.load(File.binread f)
       end
 
     else
-      f = "cache/#{@storeId}_#{query}"
+      f = "#{CACHEDIR}/#{@storeId}_#{query}"
       @cache[File.basename(f)[@storeId.size+1..-1]] = Marshal.load(File.binread f)
 
     end
@@ -300,7 +304,7 @@ class Farnell < Qt::Object
   def storeCache(query, data)
     @cache[query] = data
 
-    File.binwrite "cache/#{@storeId}_#{query}", Marshal.dump(data)
+    File.binwrite "#{CACHEDIR}/#{@storeId}_#{query}", Marshal.dump(data)
   end
 
   def noAttributesCount(data)

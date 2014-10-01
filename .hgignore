@@ -4,3 +4,5 @@ syntax: regexp
 ^\.idea/
 \.orig$
 \.log$
+^janitor/components/
+components.zip$

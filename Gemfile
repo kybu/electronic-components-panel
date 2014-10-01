@@ -1,6 +1,7 @@
 # A sample Gemfile
 source "https://rubygems.org"
 
+gem 'archive-zip'
 gem 'bundler'
 gem "qtbindings"
 gem "qtbindings-qt"

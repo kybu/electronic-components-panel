@@ -67,10 +67,32 @@ Dir.chdir 'r21' do
     FileHelpers.deleteFile Dir['qtbindings*/**/*dbus*']
     FileHelpers.deleteFile Dir['qtbindings*/**/*script*']
 
+    # qtbinding gem
     qtGemDir = gems.find {|g| g =~ /^qtbindings-\d/i}
     Dir.chdir qtGemDir do
       FileHelpers.deleteDir %w{bin/2.0 bin/2.1 examples lib/2.0}
+
+      Dir.chdir 'lib/2.1' do
+        FileHelpers.deleteFile %w{
+          libsmokeqtxmlpatterns.dll
+          libsmokeqttest.dll
+          libsmokeqtmultimedia.dll
+          libsmokeqthelp.dll
+          qttest.so}
+      end
     end
+
+    # qtbindings-qt gem
+    qtGemDir = gems.find {|g| g =~ /^qtbindings-qt-\d/i}
+    Dir.chdir qtGemDir+'/qtbin' do
+      FileHelpers.deleteFile %w{
+        QtCLucene4.dll
+        QtMultimedia4.dll
+        QtHelp4.dll
+        QtTest4.dll
+        QtXmlPatterns4.dll}
+    end
+
 
     # Delete all source code files and object files
     FileHelpers.deleteFile Dir['**/*.{o,c,h}']

@@ -66,15 +66,25 @@ class Farnell < Qt::Object
   class Error < RuntimeError
   end
 
+  class TooManySearchResultsError < Error
+    def initialize(count)
+      @count = count
+
+      super "Too many search results(#{@count})"
+    end
+  end
+
   attr_reader :cache, :id
   attr_accessor :apiKey, :ignoreReeled, :ignoreNonUK,
                        :retries, :retrySleep,
-                       :attributesRetries, :attributesRetrySleep
+                       :attributesRetries, :attributesRetrySleep,
+                       :maxResults
 
   signals 'searchResultsFromCache()', 'products(QObject *)',
                'numberOfProducts(int)',
                'communicationIssue(const QString &)',
-               'productsFetched(int)'
+               'productsFetched(int)',
+               'tooManySearchResults(int)'
 
   CACHEDIR = APPDATA+'/cache'
 
@@ -88,6 +98,8 @@ class Farnell < Qt::Object
 
     @attributesRetries = 3
     @attributesRetrySleep = 3
+
+    @maxResults = 1000
 
     loadCache
   end
@@ -166,6 +178,13 @@ class Farnell < Qt::Object
 
     n = data['keywordSearchReturn']['numberOfResults'].to_i
     log.debug {"Number of results: #{n}"}
+
+    if n > @maxResults
+      emit tooManySearchResults(n)
+
+      raise TooManySearchResultsError.new n
+    end
+
     storeCache query+'_resultCount', n
     emit numberOfProducts(n)
 

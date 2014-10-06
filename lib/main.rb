@@ -52,7 +52,8 @@ class QueryProcess < Qt::Object
   signals 'searchResultsFromCache()',
                'products(QObject *)',
                'numberOfProducts(int)',
-               'productsFetched(int)'
+               'productsFetched(int)',
+               'tooManySearchResults(int)'
 
   def initialize(storeId, query)
     super nil
@@ -73,6 +74,7 @@ class QueryProcess < Qt::Object
   def start
     @process.start
     @w.close
+    @w = nil
   end
 
   def receiveStream(opts = {})
@@ -80,7 +82,7 @@ class QueryProcess < Qt::Object
     t1 = Time.now
 
     while (
-        ((bytes = PipeHelpers.availBytes @r) > 0 or not @rawData.empty?) and
+        (@r and (bytes = PipeHelpers.availBytes @r) > 0 or not @rawData.empty?) and
         (opts[:drain] or Time.now - t1 < opts[:maxTime]))
 
       if bytes > 0
@@ -114,20 +116,40 @@ class QueryProcess < Qt::Object
             emit products(h)
             h.dispose
 
+          when CommMsgs::TooManySearchResults::ID
+            emit tooManySearchResults(msg.tooManySearchResults.count)
+
         end
       end
     end
   end
 
+  # TODO Should be renamed to something like 'finish'
   def done?
     return false if @process.alive?
 
     receiveStream drain: true
+    cleanup
+
     return true
   end
 
   def msgAvailable?
     @msg.received?
+  end
+
+  def cleanup
+    if @process.alive?
+      @process.detach
+      @process.stop
+    end
+
+    @r.close unless @r.nil?
+    @r = nil
+  end
+
+  def alive?
+    @process.alive?
   end
 
 end
@@ -171,6 +193,11 @@ class Main < Qt::Widget
     @productInfo = findChild Qt::Label, 'productInfoL'
     @productPic = findChild Qt::Label, 'productPictureL'
     @productInfoLO = findChild Qt::HBoxLayout, 'productInfoLO'
+
+    @messageW = findChild Qt::Widget, 'messageW'
+    @messageL = findChild Qt::Widget, 'messageL'
+
+    @messageW.hide
 
     #
     # Query progress
@@ -220,10 +247,11 @@ class Main < Qt::Widget
   end
 
   def timerEvent(e)
-    @queryProcess.receiveStream
+    @queryProcess.receiveStream if @queryProcess.alive?
 
    if @queryProcess.done?
       killTimer e.timerId
+     @queryProcess = nil
     end
   end
 
@@ -287,6 +315,18 @@ class Main < Qt::Widget
         self, SLOT('progressBarMax(int)'))
     connect @queryProcess, SIGNAL('productsFetched(int)') do |fetched|
       @queryPB.setValue @queryPB.value+fetched
+    end
+    connect @queryProcess, SIGNAL('tooManySearchResults(int)') do |count|
+      @progressWidgetHolder.hide
+
+      @messageL.setText "Search returned #{count} components. Please refine your search."
+      @messageW.show
+
+      searchRelatedWidgets :enable
+
+      @queryProcess.cleanup
+
+      emit searchCancelled()
     end
 
     connect @queryProcess, SIGNAL('searchResultsFromCache()') do

@@ -201,6 +201,9 @@ if ARGV.include? '-q'
     $qApp.connect(
         $supplier, SIGNAL('communicationIssue(const QString &)'),
         comm, SLOT('commIssues(const QString &)'))
+    $qApp.connect(
+        $supplier, SIGNAL('tooManySearchResults(int)'),
+        comm, SLOT('tooManySearchResults(int)'))
 
     resultCount = $supplier.resultCount query
     $supplier.searchFor query, resultCount
@@ -208,6 +211,10 @@ if ARGV.include? '-q'
     exit 0
 
   rescue Farnell::Error => e
+    include Hatchet
+
+    log.fatal {"Farnell exception: #{e.to_s}"}
+
     comm.commIssues e.to_s
     exit 1
   end

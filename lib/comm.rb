@@ -150,6 +150,12 @@ module CommMsgs
     required :issue, :bytes, 1
   end
 
+  class TooManySearchResults < Base
+    ID = 6
+
+    required :count, :uint32, 1
+  end
+
   class Msg < Base
     required :type, :uint32, 1
 
@@ -157,17 +163,20 @@ module CommMsgs
     optional :numberOfProducts, NumberOfProducts, 3
     optional :productsFetched, ProductsFetched, 4
     optional :commIssues, CommIssues, 5
+    optional :tooManySearchResults, TooManySearchResults, 6
   end
 end
 
 class QueryChildMsgs < Qt::Object
   include Base64Helpers
+  include Hatchet
 
   slots 'searchResultsFromCache()',
            'products(QObject *)',
            'numberOfProducts(int)',
            'productsFetched(int)',
-           'commIssues(const QString &)'
+           'commIssues(const QString &)',
+           'tooManySearchResults(int)'
 
   def initialize
     super(nil)
@@ -198,6 +207,11 @@ class QueryChildMsgs < Qt::Object
         CommMsgs::CommIssues.new issue: issue)
   end
 
+  def tooManySearchResults(count)
+    printMsg(
+        CommMsgs::TooManySearchResults.new count: count)
+  end
+
   private
 
   def printMsg(msg)
@@ -226,6 +240,11 @@ class QueryChildMsgs < Qt::Object
         wrapperMsg = CommMsgs::Msg.new(
             type: msg.class::ID,
             commIssues: msg)
+
+      when CommMsgs::TooManySearchResults::ID
+        wrapperMsg = CommMsgs::Msg.new(
+            type: msg.class::ID,
+            tooManySearchResults: msg)
 
     end
 

@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>842</width>
-    <height>494</height>
+    <height>716</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1,0">
+  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1,0,0">
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
@@ -177,7 +177,7 @@
             <x>0</x>
             <y>0</y>
             <width>822</width>
-            <height>102</height>
+            <height>159</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -288,10 +288,87 @@
      </layout>
     </widget>
    </item>
+   <item>
+    <widget class="QWidget" name="messageW" native="true">
+     <property name="styleSheet">
+      <string notr="true">QWidget {
+background-color: rgb(255, 218, 152)
+}</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <spacer name="horizontalSpacer_4">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>236</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="messageL">
+        <property name="text">
+         <string>Search returned # components. Please refine your search.</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_5">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>235</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="refineSearchClosePB">
+        <property name="text">
+         <string notr="true"/>
+        </property>
+        <property name="icon">
+         <iconset resource="../components.qrc">
+          <normaloff>:/pics/pics/close_cross.png</normaloff>:/pics/pics/close_cross.png</iconset>
+        </property>
+        <property name="flat">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
   </layout>
  </widget>
- <resources/>
- <connections/>
+ <resources>
+  <include location="../components.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>refineSearchClosePB</sender>
+   <signal>clicked()</signal>
+   <receiver>messageW</receiver>
+   <slot>hide()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>804</x>
+     <y>686</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>770</x>
+     <y>668</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
  <slots>
   <signal>cpcSupplier()</signal>
  </slots>

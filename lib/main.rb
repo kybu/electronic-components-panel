@@ -252,6 +252,8 @@ class Main < Qt::Widget
    if @queryProcess.done?
       killTimer e.timerId
      @queryProcess = nil
+
+     cancelQuery
     end
   end
 
@@ -345,8 +347,10 @@ class Main < Qt::Widget
     @cancelQueryPB.setEnabled false
 
     begin
-      @queryProcess.process.stop
-      @queryProcess.process.wait
+      if @queryProcess
+        @queryProcess.process.stop
+        @queryProcess.process.wait
+      end
     rescue ChildProcess::Error
     end
 

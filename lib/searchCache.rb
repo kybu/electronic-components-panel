@@ -46,4 +46,28 @@ class SearchCache < Qt::Widget
       @cacheL.addItem(k) unless k =~ /_resultCount$/
     end
   end
+
+  def contextMenuEvent(e)
+    menu = Qt::Menu.new self
+
+    aSelected = menu.addAction '&Delete selected cache'
+    aAll = menu.addAction 'Delete &all cache'
+
+    aSelected.setEnabled false if @cacheL.selectedItems.size == 0
+    aAll.setEnabled false unless @cacheL.count > 0
+
+    connect aSelected, SIGNAL('triggered()') do
+      $supplier.deleteCache @cacheL.currentItem.text
+      $supplier.loadCache
+      refreshCache
+    end
+
+    connect aAll, SIGNAL('triggered()') do
+      $supplier.deleteCache
+      $supplier.loadCache
+      refreshCache
+    end
+
+    menu.exec e.globalPos
+  end
 end

@@ -120,6 +120,23 @@ class Farnell < Qt::Object
     end
   end
 
+  def deleteCache(query=nil)
+    return unless Dir.exists?(CACHEDIR)
+
+    if query
+      f1 = "#{CACHEDIR}/#{@storeId}_#{query}"
+      f2 = "#{CACHEDIR}/#{@storeId}_#{query}_resultCount"
+
+      FileUtils.rm f1 if File.file? f1
+      FileUtils.rm f2 if File.file? f2
+
+    else
+      Dir.glob("#{CACHEDIR}/#{@storeId}_*") do |f|
+        FileUtils.rm f if File.file? f
+      end
+    end
+  end
+
   def searchFor(query, numberOfResults = 10)
     products = []
     if (products = fetchCache(query))

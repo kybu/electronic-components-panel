@@ -6,3 +6,4 @@ syntax: regexp
 \.log$
 ^janitor/components/
 components.zip$
+^janitor/Output/

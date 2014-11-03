@@ -13,6 +13,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with 'Electronic Components Panel'. If not, see <http://www.gnu.org/licenses/>.
+
+INNOSETUP = 'c:\Program Files (x86)\Inno Script Studio\isstudio.exe'
+
 require_relative '../lib/helpers'
 require_relative 'lib/fileHelpers'
 require_relative 'lib/logging'
@@ -39,6 +42,11 @@ if Dir.exists? tmpDir
   FileUtils.rmtree tmpDir
 end
 Dir.mkdir tmpDir
+
+if Dir.exists? 'Output'
+  log.debug "Deleting the old 'Output' directory"
+  FileUtils.rmtree 'Output'
+end
 
 Dir.chdir tmpDir
 
@@ -138,15 +146,22 @@ Dir.chdir(File.expand_path(File.dirname(__FILE__)+'/..')) do
   end
 end
 
-File.write 'run.bat', 'r21\bin\ruby.exe app\components.rb'
+File.write 'run.bat', '@r21\bin\rubyw.exe app\components.rb'
 
 Dir.chdir '..'
 
-# Create the zip file
-log.info "Going to create the zip file"
-FileUtils.rm_f 'components.zip'
-Archive::Zip.archive 'components.zip', 'components'
+log.info 'Creating the installer'
 
-log.info "Done"
+innoOut = `"#{INNOSETUP}" -compile setup.iss`
+if $?.exitstatus != 0
+  log.error 'InnoSetup could not create the installer'
+  log.error innoOut
+
+  exit 1
+else
+  log.info "Done"
+end
+
+
 
 
